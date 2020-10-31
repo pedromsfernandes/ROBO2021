@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+	<include file="$(find stdr_launchers)/launch/reactive_robot.launch"/>
+	<node pkg="reactive_robot" type="stdr_wall_following" name="wall_following" output="screen" args="robot0 laser_0" />
+</launch>
