@@ -31,14 +31,8 @@ $ source devel/setup.bash
 
 ## Run
 
-1. Launch the map
+Run the `.launch` file (which launches the map and deploys the robot)
 
 ```bash
-$ roslaunch stdr_launchers reactive_robot.launch
-```
-
-2. Deploy the robot
-
-```bash
-$ rosrun reactive_robot stdr_wall_following robot0 laser_0
+$ roslaunch reactive_robot wall_following.launch
 ```
