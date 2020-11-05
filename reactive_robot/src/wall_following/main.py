@@ -5,6 +5,7 @@
 import sys
 import rospy
 import math
+from operator import itemgetter
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
@@ -16,6 +17,8 @@ from geometry_msgs.msg import Twist
 
 SPEED = 0.2
 ANGULAR_SPEED = 0.2
+k = 0.15
+alpha = 0
 
 state = {
     'FIND': 0,
@@ -37,25 +40,81 @@ laser_readings = {
 }
 
 distances_to_obst = {
+    'back_left': float('inf'),
     'left': float('inf'),
     'front_left': float('inf'),
     'front': float('inf'),
     'front_right': float('inf'),
     'right': float('inf'),
+    'back_right': float('inf'),
+    'min_dist_index': -1 # Index of the ray that is closest to the wall
 }
 
 def process_laser_readings():
     global laser_readings, distances_to_obst
-    inc = int(math.floor(180/5)) # laser shoots 180 rays; floor() return a float in Python 2.X h
+    num_rays = len(laser_readings['ranges'])
+    #inc = int(math.floor(num_rays/6)) # divide laser into 6 sections; floor() return a float in Python 2.X h
+    inc = int(math.floor(180/5))
 
-    distances_to_obst['right'] = min(laser_readings['ranges'][0:inc-1])
-    distances_to_obst['front_right'] = min(laser_readings['ranges'][inc:2*inc-1])
-    distances_to_obst['front'] = min(laser_readings['ranges'][2*inc:3*inc-1])
-    distances_to_obst['front_left'] = min(laser_readings['ranges'][3*inc:4*inc-1])
-    distances_to_obst['left'] = min(laser_readings['ranges'][4*inc:5*inc-1])
+    distances_to_obst['back_right'] = min(laser_readings['ranges'][0:29])
+    distances_to_obst['right'] = min(laser_readings['ranges'][30:30+(1*inc-1)])
+    distances_to_obst['front_right'] = min(laser_readings['ranges'][30+(1*inc):30+(2*inc-1)])
+    distances_to_obst['front'] = min(laser_readings['ranges'][30+(2*inc):30+(3*inc-1)])
+    distances_to_obst['front_left'] = min(laser_readings['ranges'][30+(3*inc):30+(4*inc-1)])
+    distances_to_obst['left'] = min(laser_readings['ranges'][30+(4*inc):30+(5*inc-1)])
+    distances_to_obst['back_left'] = min(laser_readings['ranges'][30+5*inc:239])
 
-    # rospy.loginfo(distances_to_obst)
+    if (min(laser_readings['ranges']) < laser_readings['range_max']):
+        laser_readings['min_dist_index'] = min(enumerate(laser_readings['ranges']), key=itemgetter(1))[0]
+    else:
+        laser_readings['min_dist_index'] = -1
 
+    #rospy.loginfo("Index of the closest ray to wall: " + str(laser_readings['min_dist_index']))
+
+
+def check_outer_corner():
+    global laser_readings
+
+    max_distance = laser_readings['range_max']
+
+    if (
+        (
+            distances_to_obst['back_left'] < max_distance
+            and distances_to_obst['left'] > max_distance
+            and distances_to_obst['front_left'] > max_distance
+            and distances_to_obst['front'] > max_distance
+            and distances_to_obst['front_right'] > max_distance
+            and distances_to_obst['right'] > max_distance
+            and distances_to_obst['back_right'] > max_distance
+        )
+        or
+        (
+            distances_to_obst['back_right'] < max_distance
+            and distances_to_obst['left'] > max_distance
+            and distances_to_obst['front_left'] > max_distance
+            and distances_to_obst['front'] > max_distance
+            and distances_to_obst['front_right'] > max_distance
+            and distances_to_obst['right'] > max_distance
+            and distances_to_obst['back_right'] > max_distance
+        )
+    ):
+        return True
+
+    return False
+
+def check_inner_corner():
+    global laser_readings
+
+    max_distance = laser_readings['range_max']
+
+    if (
+        distances_to_obst['front'] < max_distance
+        and distances_to_obst['front_right'] < max_distance
+        and distances_to_obst['front_left'] < max_distance
+    ):
+        return True
+
+    return False
 
 def find():
     global current_state, distances_to_obst
@@ -70,35 +129,53 @@ def find():
         current_state = state['GO']
     msg_to_send = Twist()
     msg_to_send.linear.x = SPEED
-    # msg_to_send.angular.z = ANGULAR_SPEED
     return msg_to_send
 
 def go():
-    global distances_to_obst, laser_readings, current_state
+    global distances_to_obst, laser_readings, current_state, k, alpha
 
-    max_dist = laser_readings['range_max']
+    num_rays = len(laser_readings['ranges'])
+    max_distance = laser_readings['range_max']
     msg_to_send = None
 
-    #NOTE: Very crude, just wanted to get something working
-    if (distances_to_obst['front'] <= max_dist 
-        and distances_to_obst['front_right'] <= max_dist
-    ):
+    if (check_outer_corner()): # Outer corner detected, turn into it and continue going
+        rospy.loginfo("Outer corner detected")
         msg_to_send = Twist()
         msg_to_send.linear.x = SPEED/2
-        msg_to_send.angular.z = ANGULAR_SPEED
-    elif (distances_to_obst['front'] > max_dist 
-        and distances_to_obst['front_right'] <= max_dist
-    ):
+        if (distances_to_obst['back_left'] < max_distance):
+            msg_to_send.angular.z = ANGULAR_SPEED
+        else:
+            msg_to_send.angular.z = -ANGULAR_SPEED
+    if (check_inner_corner()): # Inner corner detected, turn away from it
+        rospy.loginfo("Inner corner detected")
         msg_to_send = Twist()
-        msg_to_send.linear.x = SPEED/2
-    elif (distances_to_obst['front'] > max_dist 
-        and distances_to_obst['front_right'] > max_dist
-        and distances_to_obst['right'] <= max_dist
+        if (distances_to_obst['right'] < max_distance):
+            msg_to_send.angular.z = ANGULAR_SPEED
+        else:
+            msg_to_send.angular.z = -ANGULAR_SPEED
+    elif ( # No obstacle in front, just follow the wall and correct yourself
+        distances_to_obst['left'] < max_distance
+        or distances_to_obst['front_left'] < max_distance
+        or distances_to_obst['front_right'] < max_distance
+        or distances_to_obst['right'] < max_distance
     ):
-        msg_to_send = Twist()
-        msg_to_send.linear.x = SPEED/2
-    else:
-        current_state = state['FIND']
+        rospy.loginfo("Following wall")
+        if (laser_readings['min_dist_index'] is not -1):
+            if (laser_readings['min_dist_index'] <= math.floor(num_rays/2)):
+                alpha = math.floor(num_rays/2) - laser_readings['angle_increment'] * laser_readings['min_dist_index'] 
+                alpha = (math.pi/180) * alpha
+                msg_to_send = Twist()
+                msg_to_send.linear.x = SPEED/2
+                msg_to_send.angular.z = k * alpha
+            else:
+                alpha = laser_readings['angle_increment'] * laser_readings['min_dist_index'] - math.floor(num_rays/2)
+                alpha = (math.pi/180) * alpha
+                msg_to_send = Twist()
+                msg_to_send.linear.x = SPEED/2
+                msg_to_send.angular.z = -(k * alpha)
+        else:
+            current_state = state['FIND']
+
     return msg_to_send
 
 def follow():
