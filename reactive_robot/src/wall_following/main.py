@@ -34,6 +34,7 @@ target_dist = 0.21 # Target distance to the wall
 state = {
     'FIND': 0, # Wander until wall is found
     'FOLLOW': 1, # Wall was found, follow it
+    'ROTATE': 2
 }
 current_state = state['FIND']
 
@@ -89,6 +90,18 @@ def process_laser_readings():
 
     e = target_dist - min_dist # Max distance to the wall (max range of the sensor)
 
+def rotate():
+    global distances_to_obst, laser_readings, current_state, k, alpha, min_dist_index, direction
+    
+    if (distances_to_obst['front'] > laser_readings['range_max']):
+        current_state = state['FOLLOW']
+
+    msg_to_send = Twist()
+    msg_to_send.linear.x = 0
+    msg_to_send.angular.z = 2 * direction
+    return msg_to_send
+    
+
 def find():
     global current_state, distances_to_obst
     max_dist = laser_readings['range_max']
@@ -112,6 +125,9 @@ def follow():
     max_distance = laser_readings['range_max']
     msg_to_send = None
 
+    rospy.loginfo('max_distance/2: ' + str(max_distance/2))
+    rospy.loginfo('distance from front: ' + str(distances_to_obst['front']))
+
     if (
         (
             distances_to_obst['left'] < max_distance
@@ -123,6 +139,10 @@ def follow():
             and distances_to_obst['front_right'] < max_distance
         )
     ):
+
+        if (distances_to_obst['front'] < max_distance):
+            current_state = state['ROTATE']
+
         msg_to_send = Twist()
 
         if (distances_to_obst['front'] < target_dist):
@@ -172,6 +192,8 @@ def wall_following(robot_frame_id, laser_frame_id):
             msg_to_send = find()
         elif current_state == state['FOLLOW']:
             msg_to_send = follow()
+        elif current_state == state['ROTATE']:
+            msg_to_send = rotate()
         else:
             pass
 
