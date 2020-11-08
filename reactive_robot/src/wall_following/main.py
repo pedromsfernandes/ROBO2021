@@ -5,37 +5,31 @@
 import sys
 import rospy
 import math
+import random
 from operator import itemgetter
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 
-# Parameters in sensor_msgs LaserScan (NOTE: all floats unless otherwise stated)
-# range_min, range_max, min, max, dahead, dleft, dright, ranges([]), angle_min, angle_max, angle_increment, time_increment, scan_time, intensities([])
+SPEED = 0.3 # Variable for linear speed
+ANGULAR_SPEED = 2 # Variable for angular speed (used when rotating)
 
-# NOTE: Twist - linear and angular velocity (both Vector3)
-
-SPEED = 0.3
-ANGULAR_SPEED = 0.2
-
-# PD control
 direction = 0 # 1 for wall on the right, -1 for wall on the left
-rotate_direction = 0
-kp = 15
-#kd = 2
-e_prev = 0
-e = 0
-ed = 0
+kp = 15 # K constant for the proportional controller
+e = 0 # Error used in the proportional controller
 min_dist_index = -1 # Index of the ray closest to the wall
-min_dist = 0
-min_angle = 0
+min_dist = 0 # Closest distance between the wall and the robot
+min_angle = 0 # Angle of the ray that's closest to the wall
 target_dist = 0.19 # Target distance to the wall
+
+random.seed()
 
 state = {
     'FIND': 0, # Wander until wall is found
     'FOLLOW': 1, # Wall was found, follow it
     'ROTATE': 2 # Wall directly in front, rotate according to the position of the last detected wall
 }
+
 current_state = state['FIND']
 
 laser_readings = {
@@ -60,11 +54,19 @@ distances_to_obst = {
     'back_right': float('inf'),
 }
 
+def prep_twist_msg(linear, angular):
+    msg = None
+    if (linear is not 0 or angular is not 0): 
+        msg = Twist()
+        msg.linear.x = linear
+        msg.angular.z = angular
+    return msg
+
 def process_laser_readings():
     global laser_readings, distances_to_obst, e, min_dist_index, min_dist, target_dist, direction
-    num_rays = len(laser_readings['ranges'])
 
     inc = int(math.floor(180/5)) # Back right and left laser ranges determined manually (30 degrees each)
+    num_rays = len(laser_readings['ranges'])
 
     distances_to_obst['back_right'] = min(laser_readings['ranges'][0:29])
     distances_to_obst['right'] = min(laser_readings['ranges'][30:30+(1*inc-1)])
@@ -76,8 +78,11 @@ def process_laser_readings():
 
     min_dist = min(laser_readings['ranges'])
 
+    # Get index (i.e the angle to the start of the range) of the ray that's closest to an object 
+
     if (min_dist < laser_readings['range_max']):
         min_dist_index = min(enumerate(laser_readings['ranges']), key=itemgetter(1))[0]
+
         if (min_dist_index <= num_rays/2):
             direction = 1
         else:
@@ -88,23 +93,20 @@ def process_laser_readings():
 
     # Calculate error for the proportional component
 
-    e = target_dist - min_dist # Max distance to the wall (max range of the sensor)
+    e = target_dist - min_dist
 
 def rotate():
-    global distances_to_obst, laser_readings, current_state, k, alpha, min_dist_index, direction
+    global distances_to_obst, laser_readings, current_state, direction
     
     if (distances_to_obst['front'] > laser_readings['range_max']):
         current_state = state['FOLLOW']
 
-    msg_to_send = Twist()
-    msg_to_send.linear.x = 0
-    msg_to_send.angular.z = 2 * direction
-    return msg_to_send
+    return prep_twist_msg(0, ANGULAR_SPEED * direction)
     
-
 def find():
     global current_state, distances_to_obst
     max_dist = laser_readings['range_max']
+
     if (
         distances_to_obst['right'] < max_dist
         or distances_to_obst['front_right'] < max_dist
@@ -114,19 +116,14 @@ def find():
     ):
         current_state = state['FOLLOW']
         
-    msg_to_send = Twist()
-    msg_to_send.linear.x = SPEED
-    msg_to_send.angular.z = 0
-    return msg_to_send
+    return prep_twist_msg(SPEED, random.uniform(-0.2, 0.2))
 
 def follow():
-    global distances_to_obst, laser_readings, current_state, k, alpha, min_dist_index, direction, rotate_direction
+    global distances_to_obst, laser_readings, current_state, direction
 
     max_distance = laser_readings['range_max']
-    msg_to_send = None
-
-    rospy.loginfo('max_distance/2: ' + str(max_distance/2))
-    rospy.loginfo('distance from front: ' + str(distances_to_obst['front']))
+    linear = 0
+    angular = 0
 
     if (
         (
@@ -145,11 +142,7 @@ def follow():
         if (distances_to_obst['front'] < max_distance):
             current_state = state['ROTATE']
 
-        msg_to_send = Twist()
-
-        if (distances_to_obst['front'] < target_dist):
-            msg_to_send.linear.x = 0
-        elif (
+        if (
             distances_to_obst['front'] < max_distance/2
             or
             (
@@ -162,19 +155,19 @@ def follow():
                 and distances_to_obst['left'] > max_distance
             )
         ):
-            msg_to_send.linear.x = SPEED * 0.25
+            linear = SPEED * 0.25
         else:
-            msg_to_send.linear.x = SPEED * 0.5
+            linear = SPEED * 0.5
 
-        msg_to_send.angular.z = direction * (kp * e)
-        if (msg_to_send.angular.z < -0.5):
-            msg_to_send.angular.z = -0.5
-        elif (msg_to_send.angular.z > 0.5):
-            msg_to_send.angular.z = 0.5
+        angular = direction * (kp * e)
+        if (angular < -0.5):
+            angular = -0.5
+        elif (angular > 0.5):
+            angular = 0.5
     else:
         current_state = state['FIND']
 
-    return msg_to_send
+    return prep_twist_msg(linear, angular)
 
 def laser_callback(data):
     global laser_readings
@@ -192,7 +185,7 @@ def laser_callback(data):
     process_laser_readings()
 
 def wall_following(robot_frame_id, laser_frame_id):
-    global SPEED, ANGULAR_SPEED, current_state, laser_readings, rotate_direction
+    global current_state
 
     rospy.init_node('wall_following', anonymous=True)
     rospy.Subscriber(robot_frame_id + '/' + laser_frame_id, LaserScan, laser_callback)
