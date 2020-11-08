@@ -15,13 +15,13 @@ from geometry_msgs.msg import Twist
 
 # NOTE: Twist - linear and angular velocity (both Vector3)
 
-SPEED = 0.2
+SPEED = 0.3
 ANGULAR_SPEED = 0.2
 
 # PD control
 direction = 0 # 1 for wall on the right, -1 for wall on the left
 rotate_direction = 0
-kp = 10
+kp = 15
 #kd = 2
 e_prev = 0
 e = 0
@@ -29,12 +29,12 @@ ed = 0
 min_dist_index = -1 # Index of the ray closest to the wall
 min_dist = 0
 min_angle = 0
-target_dist = 0.21 # Target distance to the wall
+target_dist = 0.19 # Target distance to the wall
 
 state = {
     'FIND': 0, # Wander until wall is found
     'FOLLOW': 1, # Wall was found, follow it
-    'ROTATE': 2
+    'ROTATE': 2 # Wall directly in front, rotate according to the position of the last detected wall
 }
 current_state = state['FIND']
 
@@ -138,6 +138,8 @@ def follow():
             distances_to_obst['right'] < max_distance
             and distances_to_obst['front_right'] < max_distance
         )
+        or distances_to_obst['back_right'] < max_distance
+        or distances_to_obst['back_left'] < max_distance
     ):
 
         if (distances_to_obst['front'] < max_distance):
@@ -147,7 +149,19 @@ def follow():
 
         if (distances_to_obst['front'] < target_dist):
             msg_to_send.linear.x = 0
-        elif (distances_to_obst['front'] < target_dist * 2):
+        elif (
+            distances_to_obst['front'] < max_distance/2
+            or
+            (
+                distances_to_obst['back_right'] < max_distance
+                and distances_to_obst['right'] > max_distance
+            )
+            or
+            (
+                distances_to_obst['back_left'] < max_distance
+                and distances_to_obst['left'] > max_distance
+            )
+        ):
             msg_to_send.linear.x = SPEED * 0.25
         else:
             msg_to_send.linear.x = SPEED * 0.5
