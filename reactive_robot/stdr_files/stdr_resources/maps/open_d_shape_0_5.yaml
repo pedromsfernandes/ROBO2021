@@ -1,4 +1,4 @@
-image: open_d_shape.png
+image: open_d_shape_0_5.png
 resolution: 0.02
 origin: [0.0, 0.0, 0.0]
 occupied_thresh: 0.6
