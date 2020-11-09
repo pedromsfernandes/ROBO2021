@@ -34,5 +34,6 @@ $ source devel/setup.bash
 Run the `.launch` file (which launches the map and deploys the robot)
 
 ```bash
-$ roslaunch reactive_robot wall_following.launch
+# THICKNESS is a number from 2 to 6
+$ roslaunch reactive_robot wall_following_0_<THICKNESS>.launch
 ```

@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+	<include file="$(find stdr_launchers)/launch/reactive_robot_0_5.launch"/>
+	<node pkg="reactive_robot" type="main.py" name="wall_following" output="screen" args="robot0 laser_0" />
+</launch>
