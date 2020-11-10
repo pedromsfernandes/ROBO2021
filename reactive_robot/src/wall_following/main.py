@@ -10,6 +10,7 @@ from operator import itemgetter
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
+from reactive_robot.msg import DistToWall
 
 SPEED = 0.3 # Variable for linear speed
 ANGULAR_SPEED = 2 # Variable for angular speed (used when rotating)
@@ -18,7 +19,7 @@ direction = 0 # 1 for wall on the right, -1 for wall on the left
 kp = 15 # K constant for the proportional controller
 e = 0 # Error used in the proportional controller
 min_dist_index = -1 # Index of the ray closest to the wall
-min_dist = 0 # Closest distance between the wall and the robot
+min_dist = 0.3 # Closest distance between the wall and the robot (initial value is the max distance of the laser)
 min_angle = 0 # Angle of the ray that's closest to the wall
 target_dist = 0.19 # Target distance to the wall
 
@@ -143,8 +144,6 @@ def follow():
             current_state = state['ROTATE']
 
         if (
-            distances_to_obst['front'] < max_distance/2
-            or
             (
                 distances_to_obst['back_right'] < max_distance
                 and distances_to_obst['right'] > max_distance
@@ -185,11 +184,12 @@ def laser_callback(data):
     process_laser_readings()
 
 def wall_following(robot_frame_id, laser_frame_id):
-    global current_state
+    global current_state, min_dist
 
     rospy.init_node('wall_following', anonymous=True)
     rospy.Subscriber(robot_frame_id + '/' + laser_frame_id, LaserScan, laser_callback)
-    publisher = rospy.Publisher(robot_frame_id + '/cmd_vel', Twist, queue_size=1)
+    twist_publisher = rospy.Publisher(robot_frame_id + '/cmd_vel', Twist, queue_size=1)
+    dist_to_wall_publisher = rospy.Publisher('dist_to_wall', DistToWall, queue_size=1)
 
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
@@ -205,7 +205,13 @@ def wall_following(robot_frame_id, laser_frame_id):
             pass
 
         if (msg_to_send is not None):
-            publisher.publish(msg_to_send)
+            twist_publisher.publish(msg_to_send)
+
+
+        dist_to_wall_msg = DistToWall()
+        dist_to_wall_msg.dist_to_wall = min_dist
+        dist_to_wall_publisher.publish(dist_to_wall_msg)
+
         rate.sleep()
 
 if __name__ == '__main__':
