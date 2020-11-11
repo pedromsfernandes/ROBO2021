@@ -14,7 +14,7 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 from reactive_robot.msg import DistToWall
 
-SPEED = 0.3 # Variable for linear speed
+SPEED = 0.38 # Variable for linear speed
 ANGULAR_SPEED = 2 # Variable for angular speed (used when rotating)
 
 direction = 0 # 1 for wall on the right, -1 for wall on the left
@@ -126,12 +126,18 @@ def process_laser_readings():
     debug_write_error_to_file()
 
 def rotate():
-    global distances_to_obst, laser_readings, current_state, direction
+    global distances_to_obst, laser_readings, current_state, direction, SPEED
     
-    if (distances_to_obst['front'] > laser_readings['range_max']):
+    if (
+        distances_to_obst['front'] > laser_readings['range_max']
+        and distances_to_obst['front_left'] > laser_readings['range_max'] * 0.75
+        and distances_to_obst['front_right'] > laser_readings['range_max'] * 0.75
+    ):
         current_state = state['FOLLOW']
-
-    return prep_twist_msg(0, ANGULAR_SPEED * direction)
+    linear = 0
+    if (distances_to_obst['front'] > laser_readings['range_max']):
+        linear = 0.5 * SPEED
+    return prep_twist_msg(linear, ANGULAR_SPEED * direction)
     
 def find():
     global current_state, distances_to_obst
@@ -149,7 +155,7 @@ def find():
     return prep_twist_msg(SPEED, random.uniform(-0.2, 0.2))
 
 def follow():
-    global distances_to_obst, laser_readings, current_state, direction
+    global distances_to_obst, laser_readings, current_state, direction, SPEED
 
     max_distance = laser_readings['range_max']
     linear = 0
@@ -162,10 +168,14 @@ def follow():
         or distances_to_obst['front'] < max_distance
         or distances_to_obst['front_left'] < max_distance
         or distances_to_obst['left'] < max_distance
-        or distances_to_obst['back_right'] < max_distance
+        or distances_to_obst['back_left'] < max_distance
     ):
 
-        if (distances_to_obst['front'] < max_distance):
+        if (
+            distances_to_obst['front'] < max_distance
+            or distances_to_obst['front_right'] < max_distance * 0.75
+            or distances_to_obst['front_left'] < max_distance * 0.75
+        ):
             current_state = state['ROTATE']
 
         if (
@@ -179,15 +189,15 @@ def follow():
                 and distances_to_obst['left'] > max_distance
             )
         ):
-            linear = SPEED * 0.25
+            linear = SPEED * 0.15
         else:
-            linear = SPEED * 0.5
+            linear = SPEED
 
         angular = direction * (kp * e)
-        if (angular < -0.5):
-            angular = -0.5
-        elif (angular > 0.5):
-            angular = 0.5
+        if (angular < -1):
+            angular = -1
+        elif (angular > 1):
+            angular = 1
     else:
         current_state = state['FIND']
 
@@ -209,7 +219,7 @@ def laser_callback(data):
     process_laser_readings()
 
 def wall_following(robot_frame_id, laser_frame_id):
-    global start, current_state, min_dist, error_file
+    global start, current_state, min_dist, error_file, kp
 
     # NOTE: Change this to match your filesystem structure!
     error_file = '/home/mfc/Documents/error_' + str(datetime.now()) + '.csv'
@@ -228,7 +238,7 @@ def wall_following(robot_frame_id, laser_frame_id):
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
         msg_to_send = None
-        
+
         if current_state == state['FIND']:
             msg_to_send = find()
         elif current_state == state['FOLLOW']:
