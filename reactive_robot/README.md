@@ -37,3 +37,10 @@ Run the `.launch` file (which launches the map and deploys the robot)
 # THICKNESS is a number from 2 to 6
 $ roslaunch reactive_robot wall_following_0_<THICKNESS>.launch
 ```
+
+Run the `pose_tracker`:
+
+```bash
+$ chmod +x ~/catkin_ws/src/reactive_robot/src/wall_following/pose_tracker.py
+$ rosrun reactive_robot pose_tracker.py
+```
