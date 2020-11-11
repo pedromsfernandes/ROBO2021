@@ -25,7 +25,6 @@ min_dist = float('inf') # Closest distance between the wall and the robot (initi
 min_angle = 0 # Angle of the ray that's closest to the wall
 target_dist = 0.19 # Target distance to the wall
 
-range_max = None
 error_sampling_delta = 0.1 # Minumum delta between error records
 error_file = None # Filename where the erros are being registered
 start = None # Used to register the error at each timestamp to a file
@@ -37,7 +36,7 @@ random.seed()
 state = {
     'FIND': 0, # Wander until wall is found
     'FOLLOW': 1, # Wall was found, follow it
-    'ROTATE': 2 # Wall directly in front, rotate according to the position of the last detected wall
+    'ROTATE': 2 # Wall directly in front or close to the front right or left, rotate according to the position of the last detected wall
 }
 
 current_state = state['FIND']
@@ -189,7 +188,7 @@ def follow():
                 and distances_to_obst['left'] > max_distance
             )
         ):
-            linear = SPEED * 0.15
+            linear = SPEED * 0.20
         else:
             linear = SPEED
 

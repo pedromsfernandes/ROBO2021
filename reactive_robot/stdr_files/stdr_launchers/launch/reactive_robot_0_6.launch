@@ -8,5 +8,5 @@
 	
 	<include file="$(find stdr_gui)/launch/stdr_gui.launch"/>
 	
-	<node pkg="stdr_robot" type="robot_handler" name="$(anon robot_spawn)" args="add $(find stdr_resources)/resources/robots/wall_following.yaml 1 2 0" />
+	<node pkg="stdr_robot" type="robot_handler" name="$(anon robot_spawn)" args="add $(find stdr_resources)/resources/robots/wall_following.yaml 2 1.73 0" />
 </launch>
