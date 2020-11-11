@@ -2,10 +2,12 @@
 
 # NOTE: IMPORTANT! You need to add execute permissions to the file (chmod +x main.py)
 
+import os
 import sys
 import rospy
 import math
 import random
+from datetime import datetime
 from operator import itemgetter
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
@@ -19,9 +21,16 @@ direction = 0 # 1 for wall on the right, -1 for wall on the left
 kp = 15 # K constant for the proportional controller
 e = 0 # Error used in the proportional controller
 min_dist_index = -1 # Index of the ray closest to the wall
-min_dist = 0.3 # Closest distance between the wall and the robot (initial value is the max distance of the laser)
+min_dist = float('inf') # Closest distance between the wall and the robot (initial value is the max distance of the laser)
 min_angle = 0 # Angle of the ray that's closest to the wall
 target_dist = 0.19 # Target distance to the wall
+
+range_max = None
+error_sampling_delta = 0.1 # Minumum delta between error records
+error_file = None # Filename where the erros are being registered
+start = None # Used to register the error at each timestamp to a file
+curr_error_recording = None # Used to control the rate at which the error is recorded
+last_error_recording = None # Used to control the rate at which the error is recorded
 
 random.seed()
 
@@ -54,6 +63,24 @@ distances_to_obst = {
     'right': float('inf'),
     'back_right': float('inf'),
 }
+
+def debug_write_error_to_file():
+    global start, last_error_recording, curr_error_recording, error_file, error_sampling_delta, e, laser_readings
+    curr_error_recording = rospy.get_time()
+    if (
+        last_error_recording is None 
+        or curr_error_recording - last_error_recording >= error_sampling_delta
+    ):
+        last_error_recording = curr_error_recording
+        delta = curr_error_recording - start
+        error_to_write = e
+        if (error_to_write > laser_readings['range_max']):
+            error_to_write = laser_readings['range_max']
+        elif (error_to_write < -laser_readings['range_max']):
+            error_to_write = -laser_readings['range_max']
+        with open(error_file, "a+") as file:
+            file.write(str(delta) + ", " + str(error_to_write) + "\n")
+            file.close()
 
 def prep_twist_msg(linear, angular):
     msg = None
@@ -96,6 +123,8 @@ def process_laser_readings():
 
     e = target_dist - min_dist
 
+    debug_write_error_to_file()
+
 def rotate():
     global distances_to_obst, laser_readings, current_state, direction
     
@@ -127,17 +156,13 @@ def follow():
     angular = 0
 
     if (
-        (
-            distances_to_obst['left'] < max_distance
-            and distances_to_obst['front_left'] < max_distance
-        )
-        or
-        (
-            distances_to_obst['right'] < max_distance
-            and distances_to_obst['front_right'] < max_distance
-        )
+        distances_to_obst['back_right'] < max_distance
+        or distances_to_obst['right'] < max_distance
+        or distances_to_obst['front_right'] < max_distance
+        or distances_to_obst['front'] < max_distance
+        or distances_to_obst['front_left'] < max_distance
+        or distances_to_obst['left'] < max_distance
         or distances_to_obst['back_right'] < max_distance
-        or distances_to_obst['back_left'] < max_distance
     ):
 
         if (distances_to_obst['front'] < max_distance):
@@ -184,12 +209,21 @@ def laser_callback(data):
     process_laser_readings()
 
 def wall_following(robot_frame_id, laser_frame_id):
-    global current_state, min_dist
+    global start, current_state, min_dist, error_file
+
+    # NOTE: Change this to match your filesystem structure!
+    error_file = '/home/mfc/Documents/error_' + str(datetime.now()) + '.csv'
+
+    with open(error_file, 'w+') as file:
+        file.write("time, error\n")
+        file.close()
 
     rospy.init_node('wall_following', anonymous=True)
     rospy.Subscriber(robot_frame_id + '/' + laser_frame_id, LaserScan, laser_callback)
     twist_publisher = rospy.Publisher(robot_frame_id + '/cmd_vel', Twist, queue_size=1)
     dist_to_wall_publisher = rospy.Publisher('dist_to_wall', DistToWall, queue_size=1)
+
+    start = rospy.get_time()
 
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
@@ -206,7 +240,6 @@ def wall_following(robot_frame_id, laser_frame_id):
 
         if (msg_to_send is not None):
             twist_publisher.publish(msg_to_send)
-
 
         dist_to_wall_msg = DistToWall()
         dist_to_wall_msg.dist_to_wall = min_dist
