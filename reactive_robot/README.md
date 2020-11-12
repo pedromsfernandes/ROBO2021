@@ -38,9 +38,21 @@ Run the `.launch` file (which launches the map and deploys the robot)
 $ roslaunch reactive_robot wall_following_0_<THICKNESS>.launch
 ```
 
-Run the `pose_tracker`:
+## Directory Structure
 
-```bash
-$ chmod +x ~/catkin_ws/src/reactive_robot/src/wall_following/pose_tracker.py
-$ rosrun reactive_robot pose_tracker.py
+```
+.
+├── stdr_files # Launch files, maps and robots to import to stdr
+├── src
+│   └── wall_following
+|       ├── main.py # Main script to interact with the robot
+|       └── pose_tracker.py # Tracks the robot's pose and saves it to a file
+├── msg
+│   └── DistToWall.msg # ROS message
+├── launch # Launch files
+├── aux
+│   └── process_stats.py # Processes error information and plots charts
+├── CMakeLists.txt
+├── README.md
+└── package.xml
 ```
