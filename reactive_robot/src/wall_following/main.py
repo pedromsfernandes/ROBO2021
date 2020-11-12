@@ -14,7 +14,7 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 from reactive_robot.msg import DistToWall
 
-SPEED = 0.4 # Variable for linear speed
+SPEED = 0.46 # Variable for linear speed
 ANGULAR_SPEED = 2 # Variable for angular speed (used when rotating)
 
 direction = 0 # 1 for wall on the right, -1 for wall on the left
@@ -234,6 +234,8 @@ def wall_following(robot_frame_id, laser_frame_id):
     dist_to_wall_publisher = rospy.Publisher('dist_to_wall', DistToWall, queue_size=1)
 
     start = rospy.get_time()
+
+    rospy.loginfo(SPEED)
 
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
