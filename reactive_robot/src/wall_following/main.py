@@ -14,7 +14,7 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 from reactive_robot.msg import DistToWall
 
-SPEED = 0.38 # Variable for linear speed
+SPEED = 0.4 # Variable for linear speed
 ANGULAR_SPEED = 2 # Variable for angular speed (used when rotating)
 
 direction = 0 # 1 for wall on the right, -1 for wall on the left
@@ -78,7 +78,7 @@ def debug_write_error_to_file():
         elif (error_to_write < -laser_readings['range_max']):
             error_to_write = -laser_readings['range_max']
         with open(error_file, "a+") as file:
-            file.write(str(delta) + ", " + str(error_to_write) + "\n")
+            file.write(str(delta) + "," + str(error_to_write) + "\n")
             file.close()
 
 def prep_twist_msg(linear, angular):
@@ -133,6 +133,7 @@ def rotate():
         and distances_to_obst['front_right'] > laser_readings['range_max'] * 0.75
     ):
         current_state = state['FOLLOW']
+
     linear = 0
     if (distances_to_obst['front'] > laser_readings['range_max']):
         linear = 0.5 * SPEED
