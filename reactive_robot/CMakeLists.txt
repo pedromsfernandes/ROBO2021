@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   sensor_msgs
   nav_msgs
+  rospy
+  message_generation
 )
 
 set(CMAKE_BUILD_TYPE Release)
@@ -16,6 +18,16 @@ set(CMAKE_BUILD_TYPE Release)
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+)
+
+add_message_files(
+  FILES
+  DistToWall.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
 )
 
 catkin_package(
@@ -30,19 +42,12 @@ catkin_package(
     geometry_msgs
     sensor_msgs
     nav_msgs
+    std_msgs
+    message_runtime
 )
-
 
 ####################### Wall following ##################################
-add_executable(stdr_wall_following
-  src/wall_following/main.cpp
-  src/wall_following/wall_following.cpp)
-add_dependencies(stdr_wall_following ${stdr_msgs_EXPORTED_TARGETS}) # wait for stdr_msgs to be build
-target_link_libraries(stdr_wall_following
-  ${catkin_LIBRARIES}
-)
 
-# Install excecutables
-install(TARGETS stdr_wall_following
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+catkin_install_python(PROGRAMS src/wall_following/main.py
+  DESTINATION $(CATKIN_PACKAGE_BIN_DESTINATION)
 )

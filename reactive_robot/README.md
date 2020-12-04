@@ -31,14 +31,28 @@ $ source devel/setup.bash
 
 ## Run
 
-1. Launch the map
+Run the `.launch` file (which launches the map and deploys the robot)
 
 ```bash
-$ roslaunch stdr_launchers reactive_robot.launch
+# THICKNESS is a number from 2 to 6
+$ roslaunch reactive_robot wall_following_0_<THICKNESS>.launch
 ```
 
-2. Deploy the robot
+## Directory Structure
 
-```bash
-$ rosrun reactive_robot stdr_wall_following robot0 laser_0
+```
+.
+├── stdr_files # Launch files, maps and robots to import to stdr
+├── src
+│   └── wall_following
+|       ├── main.py # Main script to interact with the robot
+|       └── pose_tracker.py # Tracks the robot's pose and saves it to a file
+├── msg
+│   └── DistToWall.msg # ROS message
+├── launch # Launch files
+├── aux
+│   └── process_stats.py # Processes error information and plots charts
+├── CMakeLists.txt
+├── README.md
+└── package.xml
 ```
