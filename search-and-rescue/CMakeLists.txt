@@ -40,3 +40,4 @@ link_directories(${ARGOS_LIBRARY_DIRS})
 
 # Descend into the controllers directory
 add_subdirectory(footbot_diffusion)
+add_subdirectory(src)

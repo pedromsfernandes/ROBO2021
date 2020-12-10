@@ -25,5 +25,9 @@ $ make
 
 ```bash
 # From search-and-rescue/
+# Run the example
 $ argos3 -c footbot_diffusion/diffusion_10.argos
+
+# Run our simulation
+$ argos3 -c src/search_and_rescue.argos
 ```
