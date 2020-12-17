@@ -28,6 +28,10 @@
 #include <argos3/plugins/robots/generic/control_interface/ci_differential_steering_actuator.h>
 /* Definition of the foot-bot proximity sensor */
 #include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_proximity_sensor.h>
+/* Definition of the LEDs actuator */
+#include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
+/* Definition of the omnidirectional camera sensor */
+#include <argos3/plugins/robots/generic/control_interface/ci_colored_blob_omnidirectional_camera_sensor.h>
 
 /*
  * All the ARGoS stuff in the 'argos' namespace.
@@ -85,7 +89,10 @@ private:
    CCI_DifferentialSteeringActuator* m_pcWheels;
    /* Pointer to the foot-bot proximity sensor */
    CCI_FootBotProximitySensor* m_pcProximity;
-
+   /* Pointer to the LEDs actuator */
+   CCI_LEDsActuator* m_pcLEDs;
+   /* Pointer to the omnidirectional camera sensor */
+   CCI_ColoredBlobOmnidirectionalCameraSensor* m_pcCamera;
    /*
     * The following variables are used as parameters for the
     * algorithm. You can set their value in the <parameters> section

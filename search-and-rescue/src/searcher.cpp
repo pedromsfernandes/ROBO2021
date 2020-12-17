@@ -4,17 +4,21 @@
 #include <argos3/core/utility/configuration/argos_configuration.h>
 /* 2D vector definition */
 #include <argos3/core/utility/math/vector2.h>
+/* Definition of the LEDs actuator */
+#include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
 
 /****************************************/
 /****************************************/
 
 CSearcher::CSearcher() : m_pcWheels(NULL),
-                                       m_pcProximity(NULL),
-                                       m_cAlpha(10.0f),
-                                       m_fDelta(0.5f),
-                                       m_fWheelVelocity(2.5f),
-                                       m_cGoStraightAngleRange(-ToRadians(m_cAlpha),
-                                                               ToRadians(m_cAlpha)) {}
+                         m_pcProximity(NULL),
+                         m_cAlpha(10.0f),
+                         m_pcLEDs(NULL),
+                         m_pcCamera(NULL),
+                         m_fDelta(0.5f),
+                         m_fWheelVelocity(2.5f),
+                         m_cGoStraightAngleRange(-ToRadians(m_cAlpha),
+                                                 ToRadians(m_cAlpha)) {}
 
 /****************************************/
 /****************************************/
@@ -45,6 +49,9 @@ void CSearcher::Init(TConfigurationNode &t_node)
     */
    m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
    m_pcProximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity");
+   m_pcLEDs = GetActuator<CCI_LEDsActuator>("leds");
+   m_pcCamera = GetSensor<CCI_ColoredBlobOmnidirectionalCameraSensor>("colored_blob_omnidirectional_camera");
+
    /*
     * Parse the configuration file
     *
@@ -56,6 +63,14 @@ void CSearcher::Init(TConfigurationNode &t_node)
    m_cGoStraightAngleRange.Set(-ToRadians(m_cAlpha), ToRadians(m_cAlpha));
    GetNodeAttributeOrDefault(t_node, "delta", m_fDelta, m_fDelta);
    GetNodeAttributeOrDefault(t_node, "velocity", m_fWheelVelocity, m_fWheelVelocity);
+
+   /*
+    * Other init stuff
+    */
+   /* Enable camera filtering */
+   m_pcCamera->Enable();
+   /* Set beacon color to all red to be visible for other robots */
+   m_pcLEDs->SetSingleColor(12, CColor::BLUE);
 }
 
 /****************************************/
@@ -65,6 +80,21 @@ void CSearcher::ControlStep()
 {
    /* Get readings from proximity sensor */
    const CCI_FootBotProximitySensor::TReadings &tProxReads = m_pcProximity->GetReadings();
+   /* Get the camera readings */
+   const CCI_ColoredBlobOmnidirectionalCameraSensor::SReadings &sReadings = m_pcCamera->GetReadings();
+
+   if (!sReadings.BlobList.empty())
+   {
+      for (size_t i = 0; i < sReadings.BlobList.size(); ++i)
+      {
+         // Robot sees a red led, which means he found the target robot
+         if (sReadings.BlobList[i]->Color == CColor::RED)
+         {
+            m_pcLEDs->SetSingleColor(12, CColor::YELLOW);
+         }
+      }
+   }
+
    /* Sum them together */
    CVector2 cAccumulator;
    for (size_t i = 0; i < tProxReads.size(); ++i)

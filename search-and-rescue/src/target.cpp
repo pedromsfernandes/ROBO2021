@@ -12,9 +12,12 @@ CTarget::CTarget() : m_pcWheels(NULL),
                      m_pcProximity(NULL),
                      m_cAlpha(10.0f),
                      m_fDelta(0.5f),
+                     m_pcLEDs(NULL),
                      m_fWheelVelocity(2.5f),
                      m_cGoStraightAngleRange(-ToRadians(m_cAlpha),
-                                             ToRadians(m_cAlpha)) {}
+                                             ToRadians(m_cAlpha))
+{
+}
 
 /****************************************/
 /****************************************/
