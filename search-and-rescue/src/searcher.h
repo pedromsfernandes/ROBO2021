@@ -16,8 +16,8 @@
  *    experiments/diffusion_10.argos
  */
 
-#ifndef SEARCH_AND_RESCUE_H
-#define SEARCH_AND_RESCUE_H
+#ifndef SEARCHER_H
+#define SEARCHER_H
 
 /*
  * Include some necessary headers.
@@ -38,15 +38,15 @@ using namespace argos;
 /*
  * A controller is simply an implementation of the CCI_Controller class.
  */
-class CSearchAndRescue : public CCI_Controller {
+class CSearcher : public CCI_Controller {
 
 public:
 
    /* Class constructor. */
-   CSearchAndRescue();
+   CSearcher();
 
    /* Class destructor. */
-   virtual ~CSearchAndRescue() {}
+   virtual ~CSearcher() {}
 
    /*
     * This function initializes the controller.

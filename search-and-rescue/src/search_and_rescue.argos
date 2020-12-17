@@ -14,7 +14,7 @@
     <!-- *************** -->
     <controllers>
 
-        <search_and_rescue_controller id="fdc" library="build/src/libsrc.so">
+        <search_and_rescue_searcher_controller id="searcher" library="build/src/libsrc.so">
             <actuators>
                 <differential_steering implementation="default" />
             </actuators>
@@ -22,7 +22,18 @@
                 <footbot_proximity implementation="default" show_rays="false"/>
             </sensors>
             <params alpha="7.5" delta="0.1" velocity="5" />
-        </search_and_rescue_controller>
+        </search_and_rescue_searcher_controller>
+
+        <search_and_rescue_target_controller id="target" library="build/src/libsrc.so">
+            <actuators>
+                <differential_steering implementation="default" />
+                <leds implementation="default" medium="leds"/>
+            </actuators>
+            <sensors>
+                <footbot_proximity implementation="default" show_rays="false"/>
+            </sensors>
+            <params alpha="7.5" delta="0.1" velocity="0" />
+        </search_and_rescue_target_controller>
 
     </controllers>
 
@@ -58,7 +69,7 @@
             <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
             <entity quantity="10" max_trials="100">
                 <foot-bot id="fb">
-                    <controller config="fdc" />
+                    <controller config="searcher" />
                 </foot-bot>
             </entity>
         </distribute>
@@ -73,7 +84,7 @@
                 <box id="b" size="0.3,0.3,0.5" movable="false" />
             </entity>
         </distribute>
-    
+
         <!--
             We distribute cylinders uniformly in position and with
             constant rotation (rotating a cylinder around Z does not
@@ -93,7 +104,10 @@
             <position method="uniform" min="-9,-9,0" max="9,9,0" />
             <orientation method="constant" values="0,0,0" />
             <entity quantity="1" max_trials="100">
-                <cylinder id="target" height="0.5" radius="0.15" mass="0.1" movable="true" />
+                <!-- <cylinder id="target" height="0.5" radius="0.15" mass="0.1" movable="true" /> -->
+                <foot-bot id="target">
+                    <controller config="target" />
+                </foot-bot>
             </entity>
         </distribute>
 
@@ -110,13 +124,17 @@
     <!-- * Media * -->
     <!-- ********* -->
     <media>
+        <led id="leds" />
     </media>
 
     <!-- ****************** -->
     <!-- * Visualization * -->
     <!-- ****************** -->
     <visualization>
-        <qt-opengl />
+        <qt-opengl >
+          <user_functions library="build/loop_functions/libid_loop_functions"
+                      label="id_qtuser_functions" />
+        </qt-opengl>
     </visualization>
 
 </argos-configuration>

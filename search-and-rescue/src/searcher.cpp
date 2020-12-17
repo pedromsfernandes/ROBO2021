@@ -1,5 +1,5 @@
 /* Include the controller definition */
-#include "search_and_rescue.h"
+#include "searcher.h"
 /* Function definitions for XML parsing */
 #include <argos3/core/utility/configuration/argos_configuration.h>
 /* 2D vector definition */
@@ -8,7 +8,7 @@
 /****************************************/
 /****************************************/
 
-CSearchAndRescue::CSearchAndRescue() : m_pcWheels(NULL),
+CSearcher::CSearcher() : m_pcWheels(NULL),
                                        m_pcProximity(NULL),
                                        m_cAlpha(10.0f),
                                        m_fDelta(0.5f),
@@ -19,7 +19,7 @@ CSearchAndRescue::CSearchAndRescue() : m_pcWheels(NULL),
 /****************************************/
 /****************************************/
 
-void CSearchAndRescue::Init(TConfigurationNode &t_node)
+void CSearcher::Init(TConfigurationNode &t_node)
 {
    /*
     * Get sensor/actuator handles
@@ -61,7 +61,7 @@ void CSearchAndRescue::Init(TConfigurationNode &t_node)
 /****************************************/
 /****************************************/
 
-void CSearchAndRescue::ControlStep()
+void CSearcher::ControlStep()
 {
    /* Get readings from proximity sensor */
    const CCI_FootBotProximitySensor::TReadings &tProxReads = m_pcProximity->GetReadings();
@@ -109,4 +109,4 @@ void CSearchAndRescue::ControlStep()
  * controller class to instantiate.
  * See also the configuration files for an example of how this is used.
  */
-REGISTER_CONTROLLER(CSearchAndRescue, "search_and_rescue_controller")
+REGISTER_CONTROLLER(CSearcher, "search_and_rescue_searcher_controller")
