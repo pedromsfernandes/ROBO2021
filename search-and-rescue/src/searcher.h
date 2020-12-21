@@ -42,9 +42,44 @@ using namespace argos;
 /*
  * A controller is simply an implementation of the CCI_Controller class.
  */
-class CSearcher : public CCI_Controller {
+class CSearcher : public CCI_Controller
+{
 
 public:
+   struct SDefaultParams
+   {
+      /* Maximum tolerance for the angle between
+    * the robot heading direction and
+    * the closest obstacle detected. */
+      CDegrees m_cAlpha;
+      /* Maximum tolerance for the proximity reading between
+    * the robot and the closest obstacle.
+    * The proximity reading is 0 when nothing is detected
+    * and grows exponentially to 1 when the obstacle is
+    * touching the robot.
+    */
+      Real m_fDelta;
+      /* Wheel speed. */
+      Real m_fWheelVelocity;
+      /* Angle tolerance range to go straight.
+    * It is set to [-alpha,alpha]. */
+      CRange<CRadians> m_cGoStraightAngleRange;
+
+      std::string algorithm;
+
+      void Init(TConfigurationNode &t_tree);
+   };
+
+   struct SPSOParams
+   {
+      Real target_power;
+      Real noise;
+      Real inertia;
+      Real pw;
+      Real nw;
+
+      void Init(TConfigurationNode &t_tree);
+   };
 
    /* Class constructor. */
    CSearcher();
@@ -57,7 +92,7 @@ public:
     * The 't_node' variable points to the <parameters> section in the XML
     * file in the <controllers><footbot_diffusion_controller> section.
     */
-   virtual void Init(TConfigurationNode& t_node);
+   virtual void Init(TConfigurationNode &t_node);
 
    /*
     * This function is called once every time step.
@@ -84,15 +119,14 @@ public:
    virtual void Destroy() {}
 
 private:
-
    /* Pointer to the differential steering actuator */
-   CCI_DifferentialSteeringActuator* m_pcWheels;
+   CCI_DifferentialSteeringActuator *m_pcWheels;
    /* Pointer to the foot-bot proximity sensor */
-   CCI_FootBotProximitySensor* m_pcProximity;
+   CCI_FootBotProximitySensor *m_pcProximity;
    /* Pointer to the LEDs actuator */
-   CCI_LEDsActuator* m_pcLEDs;
+   CCI_LEDsActuator *m_pcLEDs;
    /* Pointer to the omnidirectional camera sensor */
-   CCI_ColoredBlobOmnidirectionalCameraSensor* m_pcCamera;
+   CCI_ColoredBlobOmnidirectionalCameraSensor *m_pcCamera;
    /*
     * The following variables are used as parameters for the
     * algorithm. You can set their value in the <parameters> section
@@ -100,23 +134,8 @@ private:
     * <controllers><footbot_diffusion_controller> section.
     */
 
-   /* Maximum tolerance for the angle between
-    * the robot heading direction and
-    * the closest obstacle detected. */
-   CDegrees m_cAlpha;
-   /* Maximum tolerance for the proximity reading between
-    * the robot and the closest obstacle.
-    * The proximity reading is 0 when nothing is detected
-    * and grows exponentially to 1 when the obstacle is
-    * touching the robot.
-    */
-   Real m_fDelta;
-   /* Wheel speed. */
-   Real m_fWheelVelocity;
-   /* Angle tolerance range to go straight.
-    * It is set to [-alpha,alpha]. */
-   CRange<CRadians> m_cGoStraightAngleRange;
-
+   SDefaultParams defaultParams;
+   SPSOParams psoParams;
 };
 
 #endif

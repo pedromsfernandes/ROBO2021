@@ -10,15 +10,36 @@
 /****************************************/
 /****************************************/
 
+void CSearcher::SDefaultParams::Init(TConfigurationNode &t_node)
+{
+   /*
+    * Parse the configuration file
+    *
+    * The user defines this part. Here, the algorithm accepts three
+    * parameters and it's nice to put them in the config file so we don't
+    * have to recompile if we want to try other settings.
+    */
+   GetNodeAttribute(t_node, "alpha", m_cAlpha);
+   m_cGoStraightAngleRange.Set(-ToRadians(m_cAlpha), ToRadians(m_cAlpha));
+   GetNodeAttribute(t_node, "delta", m_fDelta);
+   GetNodeAttribute(t_node, "velocity", m_fWheelVelocity);
+   GetNodeAttribute(t_node, "algorithm", algorithm);
+}
+
+void CSearcher::SPSOParams::Init(TConfigurationNode &t_node)
+{
+   GetNodeAttribute(t_node, "inertia", inertia);
+   GetNodeAttribute(t_node, "noise", noise);
+   GetNodeAttribute(t_node, "pw", pw);
+   GetNodeAttribute(t_node, "nw", nw);
+}
+
 CSearcher::CSearcher() : m_pcWheels(NULL),
                          m_pcProximity(NULL),
-                         m_cAlpha(10.0f),
                          m_pcLEDs(NULL),
-                         m_pcCamera(NULL),
-                         m_fDelta(0.5f),
-                         m_fWheelVelocity(2.5f),
-                         m_cGoStraightAngleRange(-ToRadians(m_cAlpha),
-                                                 ToRadians(m_cAlpha)) {}
+                         m_pcCamera(NULL)
+{
+}
 
 /****************************************/
 /****************************************/
@@ -52,17 +73,8 @@ void CSearcher::Init(TConfigurationNode &t_node)
    m_pcLEDs = GetActuator<CCI_LEDsActuator>("leds");
    m_pcCamera = GetSensor<CCI_ColoredBlobOmnidirectionalCameraSensor>("colored_blob_omnidirectional_camera");
 
-   /*
-    * Parse the configuration file
-    *
-    * The user defines this part. Here, the algorithm accepts three
-    * parameters and it's nice to put them in the config file so we don't
-    * have to recompile if we want to try other settings.
-    */
-   GetNodeAttributeOrDefault(t_node, "alpha", m_cAlpha, m_cAlpha);
-   m_cGoStraightAngleRange.Set(-ToRadians(m_cAlpha), ToRadians(m_cAlpha));
-   GetNodeAttributeOrDefault(t_node, "delta", m_fDelta, m_fDelta);
-   GetNodeAttributeOrDefault(t_node, "velocity", m_fWheelVelocity, m_fWheelVelocity);
+   defaultParams.Init(GetNode(t_node, "default"));
+   psoParams.Init(GetNode(t_node, "pso"));
 
    /*
     * Other init stuff
@@ -106,22 +118,22 @@ void CSearcher::ControlStep()
     * is far enough, continue going straight, otherwise curve a little
     */
    CRadians cAngle = cAccumulator.Angle();
-   if (m_cGoStraightAngleRange.WithinMinBoundIncludedMaxBoundIncluded(cAngle) &&
-       cAccumulator.Length() < m_fDelta)
+   if (defaultParams.m_cGoStraightAngleRange.WithinMinBoundIncludedMaxBoundIncluded(cAngle) &&
+       cAccumulator.Length() < defaultParams.m_fDelta)
    {
       /* Go straight */
-      m_pcWheels->SetLinearVelocity(m_fWheelVelocity, m_fWheelVelocity);
+      m_pcWheels->SetLinearVelocity(defaultParams.m_fWheelVelocity, defaultParams.m_fWheelVelocity);
    }
    else
    {
       /* Turn, depending on the sign of the angle */
       if (cAngle.GetValue() > 0.0f)
       {
-         m_pcWheels->SetLinearVelocity(m_fWheelVelocity, 0.0f);
+         m_pcWheels->SetLinearVelocity(defaultParams.m_fWheelVelocity, 0.0f);
       }
       else
       {
-         m_pcWheels->SetLinearVelocity(0.0f, m_fWheelVelocity);
+         m_pcWheels->SetLinearVelocity(0.0f, defaultParams.m_fWheelVelocity);
       }
    }
 }

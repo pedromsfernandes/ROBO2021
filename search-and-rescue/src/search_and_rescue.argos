@@ -23,7 +23,10 @@
                 <footbot_proximity implementation="default" show_rays="false"/>
                 <colored_blob_omnidirectional_camera implementation="rot_z_only" medium="leds" show_rays="true" />
             </sensors>
-            <params alpha="7.5" delta="0.1" velocity="5" />
+            <params>
+                <default alpha="7.5" delta="0.1" velocity="5" algorithm="pso"/>
+                <pso target_power="1.0" noise="1.0" inertia="1.2" pw="2.0" nw="2.0" />
+            </params>
         </search_and_rescue_searcher_controller>
 
         <search_and_rescue_target_controller id="target" library="build/src/libsrc.so">
