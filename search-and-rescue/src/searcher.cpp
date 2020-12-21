@@ -2,10 +2,12 @@
 #include "searcher.h"
 /* Function definitions for XML parsing */
 #include <argos3/core/utility/configuration/argos_configuration.h>
-/* 2D vector definition */
-#include <argos3/core/utility/math/vector2.h>
 /* Definition of the LEDs actuator */
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
+
+#include <map>
+#include <random>
+#include <cmath>
 
 /****************************************/
 /****************************************/
@@ -37,6 +39,9 @@ void CSearcher::SPSOParams::Init(TConfigurationNode &t_node)
 CSearcher::CSearcher() : m_pcWheels(NULL),
                          m_pcProximity(NULL),
                          m_pcLEDs(NULL),
+                         m_pcRABS(NULL),
+                         m_pcRABA(NULL),
+                         m_pcPosSens(NULL),
                          m_pcCamera(NULL)
 {
 }
@@ -72,6 +77,9 @@ void CSearcher::Init(TConfigurationNode &t_node)
    m_pcProximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity");
    m_pcLEDs = GetActuator<CCI_LEDsActuator>("leds");
    m_pcCamera = GetSensor<CCI_ColoredBlobOmnidirectionalCameraSensor>("colored_blob_omnidirectional_camera");
+   m_pcPosSens = GetSensor<CCI_PositioningSensor>("positioning");
+   m_pcRABA = GetActuator<CCI_RangeAndBearingActuator>("range_and_bearing");
+   m_pcRABS = GetSensor<CCI_RangeAndBearingSensor>("range_and_bearing");
 
    defaultParams.Init(GetNode(t_node, "default"));
    psoParams.Init(GetNode(t_node, "pso"));
@@ -136,6 +144,15 @@ void CSearcher::ControlStep()
          m_pcWheels->SetLinearVelocity(0.0f, defaultParams.m_fWheelVelocity);
       }
    }
+}
+
+Real CSearcher::Intensity(Real distance)
+{
+   std::random_device rd{};
+   std::mt19937 gen{rd()};
+   std::normal_distribution<> d{0, psoParams.noise};
+
+   return psoParams.pw / pow(distance, 2) + std::round(d(gen));
 }
 
 /****************************************/

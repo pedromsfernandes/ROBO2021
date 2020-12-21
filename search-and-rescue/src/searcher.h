@@ -32,6 +32,14 @@
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
 /* Definition of the omnidirectional camera sensor */
 #include <argos3/plugins/robots/generic/control_interface/ci_colored_blob_omnidirectional_camera_sensor.h>
+/* Definition of the positioning sensor */
+#include <argos3/plugins/robots/generic/control_interface/ci_positioning_sensor.h>
+/* Definition of the range and bearing actuator */
+#include <argos3/plugins/robots/generic/control_interface/ci_range_and_bearing_actuator.h>
+/* Definition of the range and bearing sensor */
+#include <argos3/plugins/robots/generic/control_interface/ci_range_and_bearing_sensor.h>
+/* 2D vector definition */
+#include <argos3/core/utility/math/vector2.h>
 
 /*
  * All the ARGoS stuff in the 'argos' namespace.
@@ -118,6 +126,8 @@ public:
     */
    virtual void Destroy() {}
 
+   Real Intensity(Real distance);
+
 private:
    /* Pointer to the differential steering actuator */
    CCI_DifferentialSteeringActuator *m_pcWheels;
@@ -127,6 +137,13 @@ private:
    CCI_LEDsActuator *m_pcLEDs;
    /* Pointer to the omnidirectional camera sensor */
    CCI_ColoredBlobOmnidirectionalCameraSensor *m_pcCamera;
+   /* Pointer to the positioning sensor */
+   CCI_PositioningSensor *m_pcPosSens;
+   /* Pointer to the range and bearing actuator */
+   CCI_RangeAndBearingActuator *m_pcRABA;
+   /* Pointer to the range and bearing sensor */
+   CCI_RangeAndBearingSensor *m_pcRABS;
+
    /*
     * The following variables are used as parameters for the
     * algorithm. You can set their value in the <parameters> section
@@ -136,6 +153,10 @@ private:
 
    SDefaultParams defaultParams;
    SPSOParams psoParams;
+
+   // Algorithm variables
+   CVector2 bestPosition;
+   CVector2 bestNeighbourhoodPosition;
 };
 
 #endif
