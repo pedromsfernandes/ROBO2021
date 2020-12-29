@@ -116,7 +116,8 @@ void CSearcher::Init(TConfigurationNode &t_node)
 
    m_eState = STATE_READINGS;
 
-   speed = CVector2(0, 0);
+   CRange<Real> range(-5, 5);
+   speed = CVector2(m_pcRNG->Uniform(range), m_pcRNG->Uniform(range));
    bestPosition = CVector2(0, 0);
    bestNeighbourhoodPosition = CVector2(0, 0);
    maxSteps = 100;
@@ -194,26 +195,37 @@ void CSearcher::ReadComms()
    const CCI_RangeAndBearingSensor::TReadings &tPackets = m_pcRABS->GetReadings();
    UInt64 bestNeightbourIntensity = 0;
 
+   const CVector3 position = m_pcPosSens->GetReading().Position;
+   const CVector2 position2d = CVector2(position.GetX(), position.GetY());
+   const CQuaternion orientation = m_pcPosSens->GetReading().Orientation;
+   CRadians cZAngle, cYAngle, cXAngle;
+   orientation.ToEulerAngles(cZAngle, cYAngle, cXAngle);
+
+   CVector2 me2Target(targetPosition - position2d);
+
    if (!tPackets.empty())
    {
       for (size_t i = 0; i < tPackets.size(); ++i)
       {
-         Real length = tPackets[i].Range;
+         Real length = tPackets[i].Range / 100;
 
          CVector2 me2Neighbour = CVector2(length, tPackets[i].HorizontalBearing);
-
-         // if(this->GetId() == "fb3")
-         //    LOG << "HORIZONTAL BEARING: " << tPackets[i].HorizontalBearing;
+         me2Neighbour.Rotate(cZAngle);
 
          CVector2 pos = currPosition + me2Neighbour;
 
          UInt64 intensity = *reinterpret_cast<const UInt64 *>((&tPackets[i])->Data.ToCArray());
 
+         if (this->GetId() == "fb9" && intensity == 2)
+         {
+            LOG << "VECTORS: " << me2Neighbour << " " << currPosition << std::endl;
+         }
+
          // if (this->GetId() == "fb3")
          //    LOG << "READ_INTENSITY: " << this->GetId() << " - " << intensity << std::endl;
 
-         if (this->GetId() == "fb3")
-            LOG << "READ_POS: " << me2Neighbour << " : " << pos << std::endl;
+         if (this->GetId() == "fb9" && intensity == 2)
+            LOG << "READ_POS: " << length << " " << tPackets[i].HorizontalBearing << std::endl;
 
          // if (this->GetId() == "fb3")
          //    LOG << "READ_POS: "  << me2Neighbour << " INTENSITY: " << intensity << std::endl;
@@ -423,7 +435,7 @@ void CSearcher::SendIntensity(Real intensity)
 {
    CByteArray cBuf(10);
    UInt64 uIntensity = (UInt64)argos::Round(intensity);
-   // if (this->GetId() == "fb9")
+   // if (this->GetId() == "fb3")
    //    LOG << "SEND INTENSITY: " << this->GetId() << " - " << intensity << " - " << currPosition << std::endl;
    cBuf[0] = uIntensity & 0xff;
    cBuf[1] = uIntensity >> 8 & 0xff;
