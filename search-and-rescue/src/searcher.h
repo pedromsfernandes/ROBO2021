@@ -40,7 +40,8 @@
 #include <argos3/plugins/robots/generic/control_interface/ci_range_and_bearing_sensor.h>
 /* 2D vector definition */
 #include <argos3/core/utility/math/vector2.h>
-
+/* Definitions for random number generation */
+#include <argos3/core/utility/math/rng.h>
 /*
  * All the ARGoS stuff in the 'argos' namespace.
  * With this statement, you save typing argos:: every time.
@@ -128,6 +129,23 @@ public:
 
    Real Intensity(Real distance);
 
+   CVector2 newVelocity(CVector2 speed);
+
+   void SendIntensity(Real intensity);
+
+   void Readings();
+
+   void WriteComms();
+
+   void ReadComms();
+
+   void Move();
+   void Rotate();
+
+   void SetWheelSpeedsFromVector(const CVector2 &c_heading);
+
+   void obstacleAvoidance();
+
 private:
    /* Pointer to the differential steering actuator */
    CCI_DifferentialSteeringActuator *m_pcWheels;
@@ -143,7 +161,8 @@ private:
    CCI_RangeAndBearingActuator *m_pcRABA;
    /* Pointer to the range and bearing sensor */
    CCI_RangeAndBearingSensor *m_pcRABS;
-
+   /* The random number generator */
+   CRandom::CRNG *m_pcRNG;
    /*
     * The following variables are used as parameters for the
     * algorithm. You can set their value in the <parameters> section
@@ -156,7 +175,51 @@ private:
 
    // Algorithm variables
    CVector2 bestPosition;
+   CVector2 currPosition;
+   CVector2 targetPosition;
    CVector2 bestNeighbourhoodPosition;
+   Real bestIntensity;
+   Real currIntensity;
+   UInt64 nSteps;
+   UInt64 maxSteps;
+
+   enum EState
+   {
+      STATE_READINGS = 0,
+      STATE_WRITE_COMMS,
+      STATE_READ_COMMS,
+      STATE_MOVE,
+      STATE_ROTATE,
+   };
+
+   struct SWheelTurningParams
+   {
+      /*
+       * The turning mechanism.
+       * The robot can be in three different turning states.
+       */
+      enum ETurningMechanism
+      {
+         NO_TURN = 0, // go straight
+         SOFT_TURN,   // both wheels are turning forwards, but at different speeds
+         HARD_TURN    // wheels are turning with opposite speeds
+      } TurningMechanism;
+      /*
+       * Angular thresholds to change turning state.
+       */
+      CRadians HardTurnOnAngleThreshold;
+      CRadians SoftTurnOnAngleThreshold;
+      CRadians NoTurnAngleThreshold;
+      /* Maximum wheel speed */
+      Real MaxSpeed;
+
+      void Init(TConfigurationNode &t_tree);
+   };
+
+   EState m_eState;
+   SWheelTurningParams m_sWheelTurningParams;
+   CVector2 speed;
+   Real maxVelocity;
 };
 
 #endif

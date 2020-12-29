@@ -4,6 +4,7 @@
 #include <argos3/core/utility/configuration/argos_configuration.h>
 /* 2D vector definition */
 #include <argos3/core/utility/math/vector2.h>
+#include <argos3/core/utility/logging/argos_log.h>
 
 /****************************************/
 /****************************************/
@@ -13,6 +14,7 @@ CTarget::CTarget() : m_pcWheels(NULL),
                      m_cAlpha(10.0f),
                      m_fDelta(0.5f),
                      m_pcLEDs(NULL),
+                     m_pcPosSens(NULL),
                      m_fWheelVelocity(2.5f),
                      m_cGoStraightAngleRange(-ToRadians(m_cAlpha),
                                              ToRadians(m_cAlpha))
@@ -48,6 +50,7 @@ void CTarget::Init(TConfigurationNode &t_node)
     */
    m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
    m_pcProximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity");
+   m_pcPosSens = GetSensor<CCI_PositioningSensor>("positioning");
    m_pcLEDs = GetActuator<CCI_LEDsActuator>("leds");
 
    /*
@@ -73,6 +76,8 @@ void CTarget::ControlStep()
 {
    /* Get readings from proximity sensor */
    const CCI_FootBotProximitySensor::TReadings &tProxReads = m_pcProximity->GetReadings();
+   const CVector3 position = m_pcPosSens->GetReading().Position;
+   // argos::LOG << "TARGET_POS: " << position << std::endl;
    /* Sum them together */
    CVector2 cAccumulator;
    for (size_t i = 0; i < tProxReads.size(); ++i)

@@ -30,6 +30,7 @@
 #include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_proximity_sensor.h>
 /* Definition of the LEDs actuator */
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
+#include <argos3/plugins/robots/generic/control_interface/ci_positioning_sensor.h>
 
 /*
  * All the ARGoS stuff in the 'argos' namespace.
@@ -88,6 +89,8 @@ private:
    CCI_FootBotProximitySensor *m_pcProximity;
    /* Pointer to the LEDs actuator */
    CCI_LEDsActuator *m_pcLEDs;
+   CCI_PositioningSensor *m_pcPosSens;
+
    /*
     * The following variables are used as parameters for the
     * algorithm. You can set their value in the <parameters> section
@@ -111,8 +114,6 @@ private:
    /* Angle tolerance range to go straight.
     * It is set to [-alpha,alpha]. */
    CRange<CRadians> m_cGoStraightAngleRange;
-   
-
 };
 
 #endif
