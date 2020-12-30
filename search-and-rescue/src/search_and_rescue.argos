@@ -28,8 +28,9 @@
                 <range_and_bearing implementation="medium" medium="rab" />
             </sensors>
             <params>
-                <default alpha="7.5" delta="0.1" velocity="50" algorithm="pso"/>
+                <default alpha="7.5" delta="0.1" velocity="50" algorithm="gso"/>
                 <pso target_power="1.0" noise="1.0" inertia="0.8" pw="2.0" nw="2.0" />
+                <gso l_decay="0.4" l_enhance="0.6" n_enhance="0.08" nd="5" initial_range="20" />
                 <wheel_turning hard_turn_angle_threshold="90" soft_turn_angle_threshold="70" no_turn_angle_threshold="10" max_speed="50" />
             </params>
         </search_and_rescue_searcher_controller>
@@ -77,9 +78,9 @@
         standard deviation is 360 degrees.
     -->
         <distribute>
-            <position method="uniform" min="-2,-2,0" max="2,2,0" />
+            <position method="uniform" min="-9,-9,0" max="9,9,0" />
             <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-            <entity quantity="10" max_trials="100">
+            <entity quantity="50" max_trials="100">
                 <foot-bot id="fb" omnidirectional_camera_aperture="85">
                     <controller config="searcher" />
                 </foot-bot>
@@ -89,32 +90,32 @@
         <!--
         We distribute 5 boxes uniformly in position and rotation around Z.
         -->
-        <distribute>
+        <!-- <distribute>
             <position method="uniform" min="-9,-9,0" max="9,9,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
             <entity quantity="50" max_trials="100">
                 <box id="b" size="0.3,0.3,0.5" movable="false" />
             </entity>
-        </distribute>
+        </distribute> -->
 
         <!--
             We distribute cylinders uniformly in position and with
             constant rotation (rotating a cylinder around Z does not
             matter)
         -->
-        <distribute>
+        <!-- <distribute>
             <position method="uniform" min="-9,-9,0" max="9,9,0" />
             <orientation method="constant" values="0,0,0" />
             <entity quantity="50" max_trials="100">
                 <cylinder id="c" height="0.5" radius="0.15" movable="false" />
             </entity>
-        </distribute>
+        </distribute> -->
 
 
         <!-- Target -->
         <distribute>
             <!-- <position method="uniform" min="-9,-9,0" max="9,9,0" /> -->
-        <position method="uniform" min="-2,-3,0" max="2,2,0" />
+        <position method="uniform" min="-5,-5,0" max="5,5,0" />
         <orientation method="constant" values="0,0,0" />
         <entity quantity="1" max_trials="100">
             <!-- <cylinder id="target" height="0.5" radius="0.15" mass="0.1" movable="true" /> -->

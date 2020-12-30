@@ -42,6 +42,9 @@
 #include <argos3/core/utility/math/vector2.h>
 /* Definitions for random number generation */
 #include <argos3/core/utility/math/rng.h>
+#include <map>
+#include <string>
+
 /*
  * All the ARGoS stuff in the 'argos' namespace.
  * With this statement, you save typing argos:: every time.
@@ -90,6 +93,17 @@ public:
       void Init(TConfigurationNode &t_tree);
    };
 
+   struct SGSOParams
+   {
+      Real l_decay;
+      Real l_enhance;
+      Real n_enhance;
+      Real initial_range;
+      UInt64 nd;
+
+      void Init(TConfigurationNode &t_tree);
+   };
+
    /* Class constructor. */
    CSearcher();
 
@@ -108,6 +122,24 @@ public:
     * The length of the time step is set in the XML file.
     */
    virtual void ControlStep();
+
+   void psoControlStep();
+
+   void gsoControlStep();
+
+   void updateLuciferin();
+
+   void WriteCommsGSO();
+
+   void findNeighbours();
+
+   void findProbabilities();
+
+   void selectLeader();
+
+   void gsoMove();
+
+   void updateNeighbourhood();
 
    /*
     * This function resets the controller to its state right after the
@@ -131,7 +163,9 @@ public:
 
    CVector2 newVelocity(CVector2 speed);
 
-   void SendIntensity(Real intensity);
+   void SendIntensity(UInt64 intensity);
+
+   void sendLuciferin(Real luciferin);
 
    void Readings();
 
@@ -172,6 +206,20 @@ private:
 
    SDefaultParams defaultParams;
    SPSOParams psoParams;
+   SGSOParams gsoParams;
+
+   struct Vec2
+   {
+      CVector2 vec;
+
+      friend bool operator<(const Vec2 &l, const Vec2 &r)
+      {
+         return std::make_tuple(l.vec.GetX(), l.vec.GetY()) < std::make_tuple(r.vec.GetX(), r.vec.GetY());
+      }
+   };
+
+   std::map<Vec2, int> neighbours;
+   std::map<Vec2, Real> probabilities;
 
    // Algorithm variables
    CVector2 bestPosition;
@@ -182,6 +230,9 @@ private:
    Real currIntensity;
    UInt64 nSteps;
    UInt64 maxSteps;
+
+   Real luciferin;
+   Real range;
 
    enum EState
    {
