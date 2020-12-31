@@ -6,16 +6,25 @@
 
 using namespace argos;
 
-class CIDQTUserFunctions : public CQTOpenGLUserFunctions {
+class CSearchLoopFunctions;
+
+class CIDQTUserFunctions : public CQTOpenGLUserFunctions
+{
 
 public:
-
    CIDQTUserFunctions();
 
    virtual ~CIDQTUserFunctions() {}
 
-   void Draw(CFootBotEntity& c_entity);
-   
+   void Draw(CFootBotEntity &c_entity);
+
+   virtual void DrawInWorld();
+
+private:
+   void DrawWaypoints(const std::vector<CVector3> &c_waypoints);
+
+private:
+   CSearchLoopFunctions &m_cSearchLF;
 };
 
 #endif

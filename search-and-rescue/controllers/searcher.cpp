@@ -25,6 +25,8 @@ void CSearcher::SDefaultParams::Init(TConfigurationNode &t_node)
    GetNodeAttribute(t_node, "delta", m_fDelta);
    GetNodeAttribute(t_node, "velocity", m_fWheelVelocity);
    GetNodeAttribute(t_node, "algorithm", algorithm);
+   GetNodeAttribute(t_node, "maxSteps", maxSteps);
+   GetNodeAttribute(t_node, "maxVelocity", maxVelocity);
 }
 
 void CSearcher::SWheelTurningParams::Init(TConfigurationNode &t_node)
@@ -126,158 +128,34 @@ void CSearcher::Init(TConfigurationNode &t_node)
 
    m_eState = STATE_READINGS;
 
-   CRange<Real> randRange(-5, 5);
-   speed = CVector2(m_pcRNG->Uniform(randRange), m_pcRNG->Uniform(randRange));
-   bestPosition = CVector2(0, 0);
-   bestNeighbourhoodPosition = CVector2(0, 0);
-   maxSteps = 100;
+   speed = CVector2(randBetween(-5, 5), randBetween(-5, 5));
    nSteps = 0;
    bestIntensity = 0;
    currIntensity = 0;
-   maxVelocity = 20.0f;
    luciferin = 0;
    range = gsoParams.initial_range;
 
-   const CVector3 position = m_pcPosSens->GetReading().Position;
-   const CVector2 position2d = CVector2(position.GetX(), position.GetY());
-   bestPosition = position2d;
-   bestNeighbourhoodPosition = position2d;
+   bestPosition = getPosition();
+   bestNeighbourhoodPosition = bestPosition;
+   bestNeighbourIntensity = 0;
 }
 
 /****************************************/
 /****************************************/
 
-void CSearcher::Readings()
+void CSearcher::WriteComms(Real value)
 {
-   /* Get readings from proximity sensor */
-   const CCI_FootBotProximitySensor::TReadings &tProxReads = m_pcProximity->GetReadings();
-   /* Get the camera readings */
-   const CCI_ColoredBlobOmnidirectionalCameraSensor::SReadings &sReadings = m_pcCamera->GetReadings();
-   const CVector3 position = m_pcPosSens->GetReading().Position;
-   const CVector2 position2d = CVector2(position.GetX(), position.GetY());
-   currPosition = position2d;
-   currIntensity = 0;
-
-   if (!sReadings.BlobList.empty())
-   {
-      for (size_t i = 0; i < sReadings.BlobList.size(); ++i)
-      {
-         // Robot sees a red led, which means he sees the target robot
-         if (sReadings.BlobList[i]->Color == CColor::RED)
-         {
-            if (sReadings.BlobList[i]->Distance < 30)
-               m_pcLEDs->SetSingleColor(12, CColor::YELLOW);
-            Real intensity = Intensity(sReadings.BlobList[i]->Distance);
-            currIntensity = intensity;
-
-            if (intensity > bestIntensity)
-            {
-               bestPosition = position2d;
-               bestIntensity = intensity;
-            }
-            break;
-         }
-      }
-   }
-
-   // if (this->GetId() == "fb3")
-   // {
-   //    LOG << "CURR INTENSITY: " << currIntensity << " BEST INTENSITY: " << bestIntensity << std::endl;
-   //    LOG << "CURR POSITION: " << position2d << " BEST POSITION: " << bestPosition << std::endl;
-   // }
-   // else
-   // {
-   //    CRange<Real> range(-10, 10);
-   //    bestPosition = CVector2(m_pcRNG->Uniform(range), m_pcRNG->Uniform(range));
-   //    bestIntensity = 0;
-   // }
-
-   m_eState = STATE_WRITE_COMMS;
-}
-
-void CSearcher::WriteComms()
-{
-   SendIntensity((UInt64)currIntensity);
+   sendValue(value);
    m_eState = STATE_READ_COMMS;
-}
-
-void CSearcher::ReadComms()
-{
-
-   const CCI_RangeAndBearingSensor::TReadings &tPackets = m_pcRABS->GetReadings();
-   UInt64 bestNeightbourIntensity = 0;
-
-   const CVector3 position = m_pcPosSens->GetReading().Position;
-   const CVector2 position2d = CVector2(position.GetX(), position.GetY());
-   const CQuaternion orientation = m_pcPosSens->GetReading().Orientation;
-   CRadians cZAngle, cYAngle, cXAngle;
-   orientation.ToEulerAngles(cZAngle, cYAngle, cXAngle);
-
-   CVector2 me2Target(targetPosition - position2d);
-
-   if (!tPackets.empty())
-   {
-      for (size_t i = 0; i < tPackets.size(); ++i)
-      {
-         Real length = tPackets[i].Range / 100;
-
-         CVector2 me2Neighbour = CVector2(length, tPackets[i].HorizontalBearing);
-         me2Neighbour.Rotate(cZAngle);
-
-         CVector2 pos = currPosition + me2Neighbour;
-
-         UInt64 intensity = *reinterpret_cast<const UInt64 *>((&tPackets[i])->Data.ToCArray());
-
-         if (this->GetId() == "fb9" && intensity == 2)
-         {
-            LOG << "VECTORS: " << me2Neighbour << " " << currPosition << std::endl;
-         }
-
-         // if (this->GetId() == "fb3")
-         //    LOG << "READ_INTENSITY: " << this->GetId() << " - " << intensity << std::endl;
-
-         if (this->GetId() == "fb9" && intensity == 2)
-            LOG << "READ_POS: " << length << " " << tPackets[i].HorizontalBearing << std::endl;
-
-         // if (this->GetId() == "fb3")
-         //    LOG << "READ_POS: "  << me2Neighbour << " INTENSITY: " << intensity << std::endl;
-         if (intensity > bestNeightbourIntensity)
-         {
-            bestNeightbourIntensity = intensity;
-            bestNeighbourhoodPosition = pos;
-         }
-      }
-   }
-   else
-   {
-      bestNeightbourIntensity = 0;
-      bestNeighbourhoodPosition = CVector2(0, 0);
-   }
-
-   speed = newVelocity(speed);
-   // if (this->GetId() == "fb3")
-   //    LOG << "POSITIONS: " << bestPosition << " : " << currPosition << std::endl;
-   targetPosition = currPosition + speed;
-
-   if (this->GetId() == "fb3")
-      argos::LOG << "TARGET POS: " << targetPosition << " SPEED:" << speed << std::endl;
-
-   m_eState = STATE_MOVE;
 }
 
 void CSearcher::Move()
 {
-   const CVector3 position = m_pcPosSens->GetReading().Position;
-   const CVector2 position2d = CVector2(position.GetX(), position.GetY());
-   const CQuaternion orientation = m_pcPosSens->GetReading().Orientation;
-   CRadians cZAngle, cYAngle, cXAngle;
-   orientation.ToEulerAngles(cZAngle, cYAngle, cXAngle);
+   const CVector2 position2d = getPosition();
+   const CRadians orientation = getOrientation();
 
    CVector2 me2Target(targetPosition - position2d);
-   me2Target.Rotate(-cZAngle);
-
-   // if (this->GetId() == "fb3")
-   //    LOG << "ME2TARGET: " << me2Target << " " << me2Target.Length() << std::endl;
+   me2Target.Rotate(-orientation);
 
    const CCI_FootBotProximitySensor::TReadings &tProxReads = m_pcProximity->GetReadings();
    /* Sum them together */
@@ -396,7 +274,6 @@ void CSearcher::SetWheelSpeedsFromVector(const CVector2 &c_heading)
 
 void CSearcher::ControlStep()
 {
-
    if (defaultParams.algorithm == "pso")
    {
       psoControlStep();
@@ -407,66 +284,20 @@ void CSearcher::ControlStep()
    }
 }
 
-void CSearcher::psoControlStep()
+void CSearcher::sendValue(Real value)
 {
-   if (nSteps == maxSteps)
-   {
-      nSteps = 0;
-      m_eState = STATE_READINGS;
-   }
+   CByteArray cBuf(10);
+   UInt64 uValue = value * 100;
 
-   switch (m_eState)
-   {
-   case STATE_READINGS:
-      Readings();
-      break;
-   case STATE_WRITE_COMMS:
-      WriteComms();
-      break;
-   case STATE_READ_COMMS:
-      ReadComms();
-      break;
-   case STATE_MOVE:
-      Move();
-      break;
-   default:
-      break;
-   }
+   cBuf[0] = uValue & 0xff;
+   cBuf[1] = uValue >> 8 & 0xff;
+   cBuf[2] = uValue >> 16 & 0xff;
+   cBuf[3] = uValue >> 24 & 0xff;
 
-   nSteps++;
+   m_pcRABA->SetData(cBuf);
 }
 
-void CSearcher::gsoControlStep()
-{
-   if (nSteps == maxSteps)
-   {
-      nSteps = 0;
-      m_eState = STATE_READINGS;
-   }
-
-   switch (m_eState)
-   {
-   case STATE_READINGS:
-      updateLuciferin();
-      break;
-   case STATE_WRITE_COMMS:
-      WriteCommsGSO();
-      break;
-   case STATE_READ_COMMS:
-      findNeighbours();
-      findProbabilities();
-      selectLeader();
-      updateNeighbourhood();
-      break;
-   case STATE_MOVE:
-      Move();
-      break;
-   default:
-      break;
-   }
-
-   nSteps++;
-}
+/* GSO */
 
 void CSearcher::updateLuciferin()
 {
@@ -474,9 +305,8 @@ void CSearcher::updateLuciferin()
    const CCI_FootBotProximitySensor::TReadings &tProxReads = m_pcProximity->GetReadings();
    /* Get the camera readings */
    const CCI_ColoredBlobOmnidirectionalCameraSensor::SReadings &sReadings = m_pcCamera->GetReadings();
-   const CVector3 position = m_pcPosSens->GetReading().Position;
-   const CVector2 position2d = CVector2(position.GetX(), position.GetY());
-   currPosition = position2d;
+
+   currPosition = getPosition();
    Real intensity = 0;
 
    if (!sReadings.BlobList.empty())
@@ -494,17 +324,9 @@ void CSearcher::updateLuciferin()
       }
    }
 
-   luciferin = (UInt64)argos::Round((1 - gsoParams.l_decay) * luciferin + gsoParams.l_enhance * intensity);
-
-   // LOG << "LUCIFERIN: " << this->GetId() << " " << luciferin << std::endl;
+   luciferin = (1 - gsoParams.l_decay) * luciferin + gsoParams.l_enhance * intensity;
 
    m_eState = STATE_WRITE_COMMS;
-}
-
-void CSearcher::WriteCommsGSO()
-{
-   SendIntensity(luciferin);
-   m_eState = STATE_READ_COMMS;
 }
 
 void CSearcher::findNeighbours()
@@ -512,13 +334,9 @@ void CSearcher::findNeighbours()
    const CCI_RangeAndBearingSensor::TReadings &tPackets = m_pcRABS->GetReadings();
    UInt64 bestNeightbourIntensity = 0;
 
-   const CVector3 position = m_pcPosSens->GetReading().Position;
-   const CVector2 position2d = CVector2(position.GetX(), position.GetY());
-   const CQuaternion orientation = m_pcPosSens->GetReading().Orientation;
-   CRadians cZAngle, cYAngle, cXAngle;
-   orientation.ToEulerAngles(cZAngle, cYAngle, cXAngle);
+   const CRadians orientation = getOrientation();
 
-   CVector2 me2Target(targetPosition - position2d);
+   CVector2 me2Target(targetPosition - currPosition);
    neighbours.clear();
    probabilities.clear();
 
@@ -529,21 +347,17 @@ void CSearcher::findNeighbours()
          Real length = tPackets[i].Range / 100;
 
          CVector2 me2Neighbour = CVector2(length, tPackets[i].HorizontalBearing);
-         me2Neighbour.Rotate(cZAngle);
+         me2Neighbour.Rotate(orientation);
 
-         CVector2 pos = position2d + me2Neighbour;
-         Vec2 p;
-         p.vec = pos;
+         CVector2 pos = currPosition + me2Neighbour;
+         Vec2 p(pos);
 
          UInt64 nLuciferin = *reinterpret_cast<const UInt64 *>((&tPackets[i])->Data.ToCArray());
+         Real luc = nLuciferin / 100.0;
 
-         // LOG << "LUCIFERIN: " << luciferin << " N_LUCIFERIN: " << nLuciferin << " RANGE: " << length << std::endl;
-         // LOG << "RANGE: " << range << " " << gsoParams.initial_range <<  std::endl;
-
-         if (luciferin < nLuciferin && length < range)
+         if (luciferin < luc && length < range)
          {
-            // LOG << "LUCIFERIN: " << this->GetId() << " " << luciferin << " N_LUCIFERIN: " << nLuciferin <<  std::endl;
-            neighbours[p] = nLuciferin;
+            neighbours[p] = luc;
          }
       }
    }
@@ -562,7 +376,6 @@ void CSearcher::findProbabilities()
    {
       double diff = x.second - luciferin;
       double prob = (diff / sum);
-      // LOG << "PROB: " << x.second << " " << luciferin << " " << prob << std::endl;
 
       probabilities[x.first] = prob;
 
@@ -576,15 +389,11 @@ void CSearcher::selectLeader()
    double b_lower = 0;
    targetPosition = currPosition;
 
-   CRange<Real> r(0, 1);
-   Real toss = m_pcRNG->Uniform(r);
+   Real toss = randBetween(0, 1);
 
    for (auto const &x : neighbours)
    {
       double b_upper = b_lower + probabilities[x.first];
-
-      if (this->GetId() == "fb7")
-         LOG << "TOSS: " << toss << " " << b_upper << " " << b_lower << " " << probabilities[x.first] << std::endl;
 
       if (toss >= b_lower && toss < b_upper)
       {
@@ -596,57 +405,220 @@ void CSearcher::selectLeader()
          b_lower = b_upper;
       }
    }
+
+   // Prevent robot from being stuck when he has no neighbours and doesn't detect the target
+   if (targetPosition == currPosition && luciferin == 0)
+   {
+      targetPosition = CVector2(randBetween(-10, 10), randBetween(-10, 10));
+   }
 }
 
 void CSearcher::updateNeighbourhood()
 {
    range = std::max(0.0, std::min(gsoParams.initial_range, range + gsoParams.n_enhance * (gsoParams.nd - neighbours.size())));
-   // LOG << "UPDATED_RANGE: " << this->GetId() << " " << neighbours.size() << std::endl;
    m_eState = STATE_MOVE;
 }
+
+void CSearcher::gsoControlStep()
+{
+   if (nSteps == defaultParams.maxSteps)
+   {
+      nSteps = 0;
+      m_eState = STATE_READINGS;
+   }
+
+   switch (m_eState)
+   {
+   case STATE_READINGS:
+      updateLuciferin();
+      break;
+   case STATE_WRITE_COMMS:
+      WriteComms(luciferin);
+      break;
+   case STATE_READ_COMMS:
+      findNeighbours();
+      findProbabilities();
+      selectLeader();
+      updateNeighbourhood();
+      break;
+   case STATE_MOVE:
+      Move();
+      break;
+   default:
+      break;
+   }
+
+   nSteps++;
+}
+
+/* PSO */
+
+void CSearcher::Readings()
+{
+   /* Get readings from proximity sensor */
+   const CCI_FootBotProximitySensor::TReadings &tProxReads = m_pcProximity->GetReadings();
+   /* Get the camera readings */
+   const CCI_ColoredBlobOmnidirectionalCameraSensor::SReadings &sReadings = m_pcCamera->GetReadings();
+   currPosition = getPosition();
+   currIntensity = 0;
+
+   if (!sReadings.BlobList.empty())
+   {
+      for (size_t i = 0; i < sReadings.BlobList.size(); ++i)
+      {
+         // Robot sees a red led, which means he sees the target robot
+         if (sReadings.BlobList[i]->Color == CColor::RED)
+         {
+            if (sReadings.BlobList[i]->Distance < 30)
+               m_pcLEDs->SetSingleColor(12, CColor::YELLOW);
+
+            currIntensity = Intensity(sReadings.BlobList[i]->Distance);
+
+            if (currIntensity > bestIntensity)
+            {
+               bestPosition = currPosition;
+               bestIntensity = currIntensity;
+            }
+            break;
+         }
+      }
+   }
+
+   m_eState = STATE_WRITE_COMMS;
+}
+
+void CSearcher::ReadComms()
+{
+   const CCI_RangeAndBearingSensor::TReadings &tPackets = m_pcRABS->GetReadings();
+   const CRadians orientation = getOrientation();
+
+   if (!tPackets.empty())
+   {
+      for (size_t i = 0; i < tPackets.size(); ++i)
+      {
+         Real length = tPackets[i].Range / 100;
+
+         CVector2 me2Neighbour = CVector2(length, tPackets[i].HorizontalBearing);
+         me2Neighbour.Rotate(orientation);
+
+         CVector2 pos = currPosition + me2Neighbour;
+
+         UInt64 intensity = *reinterpret_cast<const UInt64 *>((&tPackets[i])->Data.ToCArray());
+         Real nIntensity = intensity / 100.0;
+
+         if (nIntensity > bestNeighbourIntensity)
+         {
+            bestNeighbourIntensity = nIntensity;
+            bestNeighbourhoodPosition = pos;
+         }
+      }
+   }
+
+   speed = newVelocity(speed);
+   targetPosition = currPosition + speed;
+   m_eState = STATE_MOVE;
+}
+
+CVector2 CSearcher::newVelocity(CVector2 speed)
+{
+   Real rand1 = randBetween(0, 1);
+   Real rand2 = randBetween(0, 1);
+   CVector2 vec1 = psoParams.inertia * speed;
+   CVector2 vec2 = psoParams.pw * rand1 * (bestPosition - currPosition);
+   CVector2 vec3 = psoParams.nw * rand2 * (bestNeighbourhoodPosition - currPosition);
+
+   if (bestIntensity == 0 && bestNeighbourIntensity == 0)
+   {
+      return CVector2(randBetween(-10, 10), randBetween(-10, 10));
+   }
+
+   return vec1 + vec2 + vec3;
+}
+
+void CSearcher::psoControlStep()
+{
+   if (nSteps == defaultParams.maxSteps)
+   {
+      nSteps = 0;
+      m_eState = STATE_READINGS;
+   }
+
+   switch (m_eState)
+   {
+   case STATE_READINGS:
+      Readings();
+      break;
+   case STATE_WRITE_COMMS:
+      WriteComms(currIntensity);
+      break;
+   case STATE_READ_COMMS:
+      ReadComms();
+      break;
+   case STATE_MOVE:
+      Move();
+      break;
+   default:
+      break;
+   }
+
+   nSteps++;
+}
+
+/* UTILITY FUNCTIONS */
 
 Real CSearcher::Intensity(Real distance)
 {
    return psoParams.pw / pow(distance / 100, 2) /* + m_pcRNG->Gaussian(psoParams.noise) */;
 }
 
-CVector2 CSearcher::newVelocity(CVector2 speed)
+CRadians CSearcher::getOrientation()
 {
-   CRange<Real> range(0, 1);
-   Real rand1 = m_pcRNG->Uniform(range);
-   Real rand2 = m_pcRNG->Uniform(range);
-   CVector2 vec1 = psoParams.inertia * speed;
-   CVector2 vec2 = psoParams.pw * (bestPosition - currPosition);
-   CVector2 vec3 = psoParams.nw * (bestNeighbourhoodPosition - currPosition);
+   CRadians cZAngle, cYAngle, cXAngle;
+   const CQuaternion orientation = m_pcPosSens->GetReading().Orientation;
+   orientation.ToEulerAngles(cZAngle, cYAngle, cXAngle);
 
-   // if (this->GetId() == "fb3")
-   //    LOG << " BEST_POS: " << bestPosition << " CURR_POS: " << currPosition << " BEST_NEIGHBOUR_POS: " << bestNeighbourhoodPosition << std::endl;
-
-   return vec1 + vec2 + vec3;
+   return cZAngle;
 }
 
-void CSearcher::SendIntensity(UInt64 intensity)
+CVector2 CSearcher::getPosition()
 {
-   CByteArray cBuf(10);
-   // if (this->GetId() == "fb3")
-   //    LOG << "SEND INTENSITY: " << this->GetId() << " - " << intensity << " - " << currPosition << std::endl;
-   cBuf[0] = intensity & 0xff;
-   cBuf[1] = intensity >> 8 & 0xff;
-   cBuf[2] = intensity >> 16 & 0xff;
-   cBuf[3] = intensity >> 24 & 0xff;
-   m_pcRABA->SetData(cBuf);
+   const CVector3 position = m_pcPosSens->GetReading().Position;
+
+   return CVector2(position.GetX(), position.GetY());
 }
 
-void CSearcher::sendLuciferin(Real luciferin)
-{
-   CByteArray cBuf(10);
-   UInt64 uIntensity = (UInt64)argos::Round(luciferin);
+EState CSearcher::getState() { return m_eState; }
 
-   cBuf[0] = uIntensity & 0xff;
-   cBuf[1] = uIntensity >> 8 & 0xff;
-   cBuf[2] = uIntensity >> 16 & 0xff;
-   cBuf[3] = uIntensity >> 24 & 0xff;
-   m_pcRABA->SetData(cBuf);
+void CSearcher::setState(EState newState)
+{
+   this->m_eState = newState;
+}
+
+Real CSearcher::randBetween(Real lhs, Real rhs)
+{
+   CRange<Real> range(lhs, rhs);
+
+   return m_pcRNG->Uniform(range);
+}
+
+bool CSearcher::isNearTarget()
+{
+   const CCI_ColoredBlobOmnidirectionalCameraSensor::SReadings &sReadings = m_pcCamera->GetReadings();
+
+   if (!sReadings.BlobList.empty())
+   {
+      for (size_t i = 0; i < sReadings.BlobList.size(); ++i)
+      {
+         // Robot sees a red led, which means he sees the target robot
+         if (sReadings.BlobList[i]->Color == CColor::RED)
+         {
+            if (sReadings.BlobList[i]->Distance < 50)
+               return true;
+         }
+      }
+   }
+
+   return false;
 }
 
 /****************************************/

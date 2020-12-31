@@ -51,6 +51,16 @@
  */
 using namespace argos;
 
+enum EState
+{
+   STATE_READINGS = 0,
+   STATE_WRITE_COMMS,
+   STATE_READ_COMMS,
+   STATE_MOVE,
+   STATE_READY,
+   STATE_ROTATE,
+};
+
 /*
  * A controller is simply an implementation of the CCI_Controller class.
  */
@@ -76,6 +86,10 @@ public:
       /* Angle tolerance range to go straight.
     * It is set to [-alpha,alpha]. */
       CRange<CRadians> m_cGoStraightAngleRange;
+
+      UInt64 maxSteps;
+
+      Real maxVelocity;
 
       std::string algorithm;
 
@@ -104,6 +118,42 @@ public:
       void Init(TConfigurationNode &t_tree);
    };
 
+   struct SWheelTurningParams
+   {
+      /*
+       * The turning mechanism.
+       * The robot can be in three different turning states.
+       */
+      enum ETurningMechanism
+      {
+         NO_TURN = 0, // go straight
+         SOFT_TURN,   // both wheels are turning forwards, but at different speeds
+         HARD_TURN    // wheels are turning with opposite speeds
+      } TurningMechanism;
+      /*
+       * Angular thresholds to change turning state.
+       */
+      CRadians HardTurnOnAngleThreshold;
+      CRadians SoftTurnOnAngleThreshold;
+      CRadians NoTurnAngleThreshold;
+      /* Maximum wheel speed */
+      Real MaxSpeed;
+
+      void Init(TConfigurationNode &t_tree);
+   };
+
+   struct Vec2
+   {
+      CVector2 vec;
+
+      Vec2(CVector2 v) : vec(v) {}
+
+      friend bool operator<(const Vec2 &l, const Vec2 &r)
+      {
+         return std::make_tuple(l.vec.GetX(), l.vec.GetY()) < std::make_tuple(r.vec.GetX(), r.vec.GetY());
+      }
+   };
+
    /* Class constructor. */
    CSearcher();
 
@@ -116,30 +166,6 @@ public:
     * file in the <controllers><footbot_diffusion_controller> section.
     */
    virtual void Init(TConfigurationNode &t_node);
-
-   /*
-    * This function is called once every time step.
-    * The length of the time step is set in the XML file.
-    */
-   virtual void ControlStep();
-
-   void psoControlStep();
-
-   void gsoControlStep();
-
-   void updateLuciferin();
-
-   void WriteCommsGSO();
-
-   void findNeighbours();
-
-   void findProbabilities();
-
-   void selectLeader();
-
-   void gsoMove();
-
-   void updateNeighbourhood();
 
    /*
     * This function resets the controller to its state right after the
@@ -159,26 +185,59 @@ public:
     */
    virtual void Destroy() {}
 
-   Real Intensity(Real distance);
+   /*
+    * This function is called once every time step.
+    * The length of the time step is set in the XML file.
+    */
+   virtual void ControlStep();
 
-   CVector2 newVelocity(CVector2 speed);
+   /* GSO */
 
-   void SendIntensity(UInt64 intensity);
+   void gsoControlStep();
 
-   void sendLuciferin(Real luciferin);
+   void updateLuciferin();
+
+   void findNeighbours();
+
+   void findProbabilities();
+
+   void selectLeader();
+
+   void updateNeighbourhood();
+
+   /* PSO */
 
    void Readings();
 
-   void WriteComms();
-
    void ReadComms();
 
+   CVector2 newVelocity(CVector2 speed);
+
+   void psoControlStep();
+
+   /* UTILITY FUNCTIONS */
+
+   CVector2 getPosition();
+
+   Real Intensity(Real distance);
+
+   CRadians getOrientation();
+
+   void sendValue(Real intensity);
+
+   void WriteComms(Real value);
+
    void Move();
-   void Rotate();
 
    void SetWheelSpeedsFromVector(const CVector2 &c_heading);
 
-   void obstacleAvoidance();
+   EState getState();
+
+   void setState(EState newState);
+
+   Real randBetween(Real lhs, Real rhs);
+
+   bool isNearTarget();
 
 private:
    /* Pointer to the differential steering actuator */
@@ -205,72 +264,30 @@ private:
     */
 
    SDefaultParams defaultParams;
+   SWheelTurningParams m_sWheelTurningParams;
    SPSOParams psoParams;
    SGSOParams gsoParams;
 
-   struct Vec2
-   {
-      CVector2 vec;
-
-      friend bool operator<(const Vec2 &l, const Vec2 &r)
-      {
-         return std::make_tuple(l.vec.GetX(), l.vec.GetY()) < std::make_tuple(r.vec.GetX(), r.vec.GetY());
-      }
-   };
-
-   std::map<Vec2, int> neighbours;
-   std::map<Vec2, Real> probabilities;
-
    // Algorithm variables
-   CVector2 bestPosition;
    CVector2 currPosition;
    CVector2 targetPosition;
+   UInt64 nSteps;
+
+   // PSO Variables
+   CVector2 bestPosition;
    CVector2 bestNeighbourhoodPosition;
    Real bestIntensity;
+   Real bestNeighbourIntensity;
    Real currIntensity;
-   UInt64 nSteps;
-   UInt64 maxSteps;
+   CVector2 speed;
 
+   // GSO Variables
    Real luciferin;
    Real range;
-
-   enum EState
-   {
-      STATE_READINGS = 0,
-      STATE_WRITE_COMMS,
-      STATE_READ_COMMS,
-      STATE_MOVE,
-      STATE_ROTATE,
-   };
-
-   struct SWheelTurningParams
-   {
-      /*
-       * The turning mechanism.
-       * The robot can be in three different turning states.
-       */
-      enum ETurningMechanism
-      {
-         NO_TURN = 0, // go straight
-         SOFT_TURN,   // both wheels are turning forwards, but at different speeds
-         HARD_TURN    // wheels are turning with opposite speeds
-      } TurningMechanism;
-      /*
-       * Angular thresholds to change turning state.
-       */
-      CRadians HardTurnOnAngleThreshold;
-      CRadians SoftTurnOnAngleThreshold;
-      CRadians NoTurnAngleThreshold;
-      /* Maximum wheel speed */
-      Real MaxSpeed;
-
-      void Init(TConfigurationNode &t_tree);
-   };
+   std::map<Vec2, Real> neighbours;
+   std::map<Vec2, Real> probabilities;
 
    EState m_eState;
-   SWheelTurningParams m_sWheelTurningParams;
-   CVector2 speed;
-   Real maxVelocity;
 };
 
 #endif

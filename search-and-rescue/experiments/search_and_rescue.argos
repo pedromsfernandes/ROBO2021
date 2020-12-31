@@ -14,7 +14,7 @@
     <!-- *************** -->
     <controllers>
 
-        <search_and_rescue_searcher_controller id="searcher" library="build/src/libsrc.so">
+        <search_and_rescue_searcher_controller id="searcher" library="build/controllers/libcontrollers.so">
             <actuators>
                 <differential_steering implementation="default" />
                 <leds implementation="default" medium="leds"/>
@@ -28,14 +28,14 @@
                 <range_and_bearing implementation="medium" medium="rab" />
             </sensors>
             <params>
-                <default alpha="7.5" delta="0.1" velocity="50" algorithm="gso"/>
-                <pso target_power="1.0" noise="1.0" inertia="0.8" pw="2.0" nw="2.0" />
+                <default alpha="7.5" delta="0.1" velocity="50" algorithm="pso" maxSteps="100" maxVelocity="20.0" />
+                <pso target_power="1.0" noise="1.0" inertia="0.5" pw="1.0" nw="1.0" />
                 <gso l_decay="0.4" l_enhance="0.6" n_enhance="0.08" nd="5" initial_range="20" />
                 <wheel_turning hard_turn_angle_threshold="90" soft_turn_angle_threshold="70" no_turn_angle_threshold="10" max_speed="50" />
             </params>
         </search_and_rescue_searcher_controller>
 
-        <search_and_rescue_target_controller id="target" library="build/src/libsrc.so">
+        <search_and_rescue_target_controller id="target" library="build/controllers/libcontrollers.so">
             <actuators>
                 <differential_steering implementation="default" />
                 <leds implementation="default" medium="leds"/>
@@ -48,6 +48,8 @@
         </search_and_rescue_target_controller>
 
     </controllers>
+
+    <loop_functions library="build/loop_functions/libsearch_loop_functions" label="search_loop_functions" maxSteps="100" algorithm="pso"/>
 
     <!-- *********************** -->
     <!-- * Arena configuration * -->
@@ -78,14 +80,36 @@
         standard deviation is 360 degrees.
     -->
         <distribute>
-            <position method="uniform" min="-9,-9,0" max="9,9,0" />
+            <!-- <position method="uniform" min="0,0,0" max="9,9,0" /> -->
+            <!-- <position method="uniform" min="-5,-5,0" max="5,5,0" /> -->
+            <position method="uniform" min="-10,-10,0" max="0,0,0" />
             <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-            <entity quantity="50" max_trials="100">
+            <entity quantity="10" max_trials="100">
                 <foot-bot id="fb" omnidirectional_camera_aperture="85">
                     <controller config="searcher" />
                 </foot-bot>
             </entity>
         </distribute>
+
+        <!-- Target -->
+        <distribute>
+            <!-- <position method="uniform" min="-9,-9,0" max="9,9,0" /> -->
+            <!-- <position method="uniform" min="-2,-2,0" max="2,2,0" /> -->
+            <position method="uniform" min="-10,-10,0" max="10,0,0" />
+            <orientation method="constant" values="0,0,0" />
+            <entity quantity="1" max_trials="100">
+                <!-- <cylinder id="target" height="0.5" radius="0.15" mass="0.1" movable="true" /> -->
+                <cylinder id="target" radius="0.15" height="0.5" movable="false">
+                    <leds medium="leds">
+                        <led offset="0.15,0,0.25" anchor="origin" color="red" />
+                        <led offset="0,0.15,0.25" anchor="origin" color="red" />
+                        <led offset="0,-0.15,0.25" anchor="origin" color="red" />
+                        <led offset="-0.15,0,0.25" anchor="origin" color="red" />
+                    </leds>
+                </cylinder>
+            </entity>
+        </distribute>
+
 
         <!--
         We distribute 5 boxes uniformly in position and rotation around Z.
@@ -112,43 +136,30 @@
         </distribute> -->
 
 
-        <!-- Target -->
-        <distribute>
-            <!-- <position method="uniform" min="-9,-9,0" max="9,9,0" /> -->
-        <position method="uniform" min="-5,-5,0" max="5,5,0" />
-        <orientation method="constant" values="0,0,0" />
-        <entity quantity="1" max_trials="100">
-            <!-- <cylinder id="target" height="0.5" radius="0.15" mass="0.1" movable="true" /> -->
-            <foot-bot id="target">
-                <controller config="target" />
-            </foot-bot>
-        </entity>
-        </distribute>
+    </arena>
 
-</arena>
+    <!-- ******************* -->
+    <!-- * Physics engines * -->
+    <!-- ******************* -->
+    <physics_engines>
+        <dynamics2d id="dyn2d" />
+    </physics_engines>
 
-<!-- ******************* -->
-<!-- * Physics engines * -->
-<!-- ******************* -->
-<physics_engines>
-    <dynamics2d id="dyn2d" />
-</physics_engines>
+    <!-- ********* -->
+    <!-- * Media * -->
+    <!-- ********* -->
+    <media>
+        <led id="leds" />
+        <range_and_bearing id="rab" />
+    </media>
 
-<!-- ********* -->
-<!-- * Media * -->
-<!-- ********* -->
-<media>
-    <led id="leds" />
-    <range_and_bearing id="rab" />
-</media>
-
-<!-- ****************** -->
-<!-- * Visualization * -->
-<!-- ****************** -->
-<visualization>
-    <qt-opengl >
-        <user_functions library="build/loop_functions/libid_loop_functions" label="id_qtuser_functions" />
-    </qt-opengl>
-</visualization>
+    <!-- ****************** -->
+    <!-- * Visualization * -->
+    <!-- ****************** -->
+    <visualization>
+        <qt-opengl >
+            <user_functions library="build/loop_functions/libsearch_loop_functions" label="id_qtuser_functions" />
+        </qt-opengl>
+    </visualization>
 
 </argos-configuration>
