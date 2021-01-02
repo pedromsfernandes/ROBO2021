@@ -35,7 +35,7 @@
             </params>
         </search_and_rescue_searcher_controller>
 
-        <search_and_rescue_target_controller id="target" library="build/controllers/libcontrollers.so">
+        <search_and_rescue_target_controller id="target-controller" library="build/controllers/libcontrollers.so">
             <actuators>
                 <differential_steering implementation="default" />
                 <leds implementation="default" medium="leds"/>
@@ -49,7 +49,7 @@
 
     </controllers>
 
-    <loop_functions library="build/loop_functions/libsearch_loop_functions" label="search_loop_functions" maxSteps="100" algorithm="pso"/>
+    <loop_functions library="build/loop_functions/libsearch_loop_functions" label="search_loop_functions" maxSteps="100" algorithm="pso" targetPosition="9.5,9.5,0"/>
 
     <!-- *********************** -->
     <!-- * Arena configuration * -->
@@ -82,7 +82,7 @@
         <distribute>
             <!-- <position method="uniform" min="0,0,0" max="9,9,0" /> -->
             <!-- <position method="uniform" min="-5,-5,0" max="5,5,0" /> -->
-            <position method="uniform" min="-10,-10,0" max="0,0,0" />
+            <position method="uniform" min="-10,-10,0" max="-8.5,-8.5,0" />
             <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
             <entity quantity="10" max_trials="100">
                 <foot-bot id="fb" omnidirectional_camera_aperture="85">
@@ -92,23 +92,16 @@
         </distribute>
 
         <!-- Target -->
-        <distribute>
-            <!-- <position method="uniform" min="-9,-9,0" max="9,9,0" /> -->
-            <!-- <position method="uniform" min="-2,-2,0" max="2,2,0" /> -->
-            <position method="uniform" min="-10,-10,0" max="10,0,0" />
-            <orientation method="constant" values="0,0,0" />
-            <entity quantity="1" max_trials="100">
                 <!-- <cylinder id="target" height="0.5" radius="0.15" mass="0.1" movable="true" /> -->
-                <cylinder id="target" radius="0.15" height="0.5" movable="false">
-                    <leds medium="leds">
-                        <led offset="0.15,0,0.25" anchor="origin" color="red" />
-                        <led offset="0,0.15,0.25" anchor="origin" color="red" />
-                        <led offset="0,-0.15,0.25" anchor="origin" color="red" />
-                        <led offset="-0.15,0,0.25" anchor="origin" color="red" />
-                    </leds>
-                </cylinder>
-            </entity>
-        </distribute>
+        <cylinder id="target" radius="0.15" height="0.5" movable="false">
+            <body position="9.5,9.5,0" orientation="0,0,0" />
+            <leds medium="leds">
+                <led offset="0.15,0,0.25" anchor="origin" color="red" />
+                <led offset="0,0.15,0.25" anchor="origin" color="red" />
+                <led offset="0,-0.15,0.25" anchor="origin" color="red" />
+                <led offset="-0.15,0,0.25" anchor="origin" color="red" />
+            </leds>
+        </cylinder>
 
 
         <!--
@@ -127,13 +120,13 @@
             constant rotation (rotating a cylinder around Z does not
             matter)
         -->
-        <!-- <distribute>
+        <distribute>
             <position method="uniform" min="-9,-9,0" max="9,9,0" />
             <orientation method="constant" values="0,0,0" />
             <entity quantity="50" max_trials="100">
                 <cylinder id="c" height="0.5" radius="0.15" movable="false" />
             </entity>
-        </distribute> -->
+        </distribute>
 
 
     </arena>

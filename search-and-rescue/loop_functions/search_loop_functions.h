@@ -40,6 +40,7 @@ public:
 private:
     int steps;
     int maxSteps;
+    CVector2 targetPosition;
     ofstream file;
     string algorithm;
 };

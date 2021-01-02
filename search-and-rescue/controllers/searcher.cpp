@@ -568,7 +568,7 @@ void CSearcher::psoControlStep()
 
 Real CSearcher::Intensity(Real distance)
 {
-   return psoParams.pw / pow(distance / 100, 2) /* + m_pcRNG->Gaussian(psoParams.noise) */;
+   return std::max(psoParams.pw / pow(distance / 100, 2) + m_pcRNG->Gaussian(psoParams.noise), (Real) 0.0f);
 }
 
 CRadians CSearcher::getOrientation()
@@ -619,6 +619,26 @@ bool CSearcher::isNearTarget()
    }
 
    return false;
+}
+
+Real CSearcher::getDistanceToTarget()
+{
+   const CCI_ColoredBlobOmnidirectionalCameraSensor::SReadings &sReadings = m_pcCamera->GetReadings();
+
+   if (!sReadings.BlobList.empty())
+   {
+      for (size_t i = 0; i < sReadings.BlobList.size(); ++i)
+      {
+         // Robot sees a red led, which means he sees the target robot
+         if (sReadings.BlobList[i]->Color == CColor::RED)
+         {
+            return sReadings.BlobList[i]->Distance;
+         }
+      }
+   }
+
+   // range of the range and bearing sensor TODO
+   return 300;
 }
 
 /****************************************/

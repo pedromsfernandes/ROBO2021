@@ -39,9 +39,12 @@ void CSearchLoopFunctions::Init(TConfigurationNode &t_node)
     {
         GetNodeAttribute(t_node, "maxSteps", maxSteps);
         GetNodeAttribute(t_node, "algorithm", algorithm);
+        CVector3 targetPositionTemp = CVector3();
+        GetNodeAttribute(t_node, "targetPosition", targetPositionTemp);
+        targetPosition = CVector2(targetPositionTemp.GetX(), targetPositionTemp.GetY());
 
         file.open("stats/" + algorithm + "-" + currentDateTime() + ".txt");
-        file << "iteration, ticks" << endl;
+        file << "ticks, averageDistance" << endl;
     }
     catch (CARGoSException &ex)
     {
@@ -91,36 +94,6 @@ void CSearchLoopFunctions::Reset()
 
 void CSearchLoopFunctions::PostStep()
 {
-    // CSpace::TMapPerType &m_cFootbots = GetSpace().GetEntitiesByType("foot-bot");
-    // bool ready = true;
-
-    // for (CSpace::TMapPerType::iterator it = m_cFootbots.begin();
-    //      it != m_cFootbots.end();
-    //      ++it)
-    // {
-    //     /* Get handle to foot-bot entity and controller */
-    //     CFootBotEntity &cFootBot = *any_cast<CFootBotEntity *>(it->second);
-    //     CSearcher &cController = dynamic_cast<CSearcher &>(cFootBot.GetControllableEntity().GetController());
-
-    //     if (!cController.getState() == STATE_READY)
-    //     {
-    //         ready = false;
-    //         break;
-    //     }
-    // }
-
-    // if (ready)
-    // {
-    //     for (CSpace::TMapPerType::iterator it = m_cFootbots.begin();
-    //          it != m_cFootbots.end();
-    //          ++it)
-    //     {
-    //         CFootBotEntity &cFootBot = *any_cast<CFootBotEntity *>(it->second);
-    //         CSearcher &cController = dynamic_cast<CSearcher &>(cFootBot.GetControllableEntity().GetController());
-
-    //         cController.setState(STATE_READINGS);
-    //     }
-    // }
     steps++;
 
     trajectoryPositions();
@@ -131,20 +104,22 @@ void CSearchLoopFunctions::PostStep()
     steps = 0;
 
     CSpace::TMapPerType &m_cFootbots = GetSpace().GetEntitiesByType("foot-bot");
-    int numRobotsNearTarget = 0;
+
+    Real totalDistance = 0;
+    int numRobots = 0;
 
     for (CSpace::TMapPerType::iterator it = m_cFootbots.begin(); it != m_cFootbots.end(); ++it)
     {
         CFootBotEntity &cFootBot = *any_cast<CFootBotEntity *>(it->second);
         CSearcher &cController = dynamic_cast<CSearcher &>(cFootBot.GetControllableEntity().GetController());
 
-        if (cController.isNearTarget())
-        {
-            numRobotsNearTarget++;
-        }
+        CVector2 pos = cController.getPosition();
+        
+        totalDistance += (pos - targetPosition).Length();
+        numRobots++;
     }
 
-    file << numRobotsNearTarget << ", " << GetSpace().GetSimulationClock() << endl;
+    file << GetSpace().GetSimulationClock() << ", " << totalDistance/numRobots << endl;
 }
 
 void CSearchLoopFunctions::trajectoryPositions()

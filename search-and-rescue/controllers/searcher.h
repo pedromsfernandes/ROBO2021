@@ -239,6 +239,8 @@ public:
 
    bool isNearTarget();
 
+   Real getDistanceToTarget();
+
 private:
    /* Pointer to the differential steering actuator */
    CCI_DifferentialSteeringActuator *m_pcWheels;
